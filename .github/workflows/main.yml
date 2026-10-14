@@ -1,4 +1,4 @@
-name: Build Native Full Studio APK
+name: Build Working Voice Studio APK
 
 on:
   workflow_dispatch:
@@ -25,16 +25,18 @@ jobs:
           flutter-version: '3.22.x'
           channel: 'stable'
 
-      - name: Build Full Native Mobile Studio
+      - name: Build Full Interactive Mobile Studio
         run: |
-          flutter create --org com.recapcraft --project-name recapcraft_app studio_native_app
-          cd studio_native_app
-          flutter pub add cupertino_icons
+          flutter create --org com.recapcraft --project-name recapcraft_app studio_interactive_app
+          cd studio_interactive_app
+          flutter pub add flutter_tts cupertino_icons
 
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
+          # បើកសិទ្ធិ Internet និងសម្លេងលើ Android
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>' android/app/src/main/AndroidManifest.xml
 
           cat << 'EOF' > lib/main.dart
           import 'package:flutter/material.dart';
+          import 'package:flutter_tts/flutter_tts.dart';
 
           void main() {
             runApp(const RecapStudioApp());
@@ -67,16 +69,21 @@ jobs:
           class _StudioMainScreenState extends State<StudioMainScreen> {
             String _activeTab = 'Script';
             double _fontSize = 22.0;
+            final FlutterTts _flutterTts = FlutterTts();
+            bool _isPlayingVoice = false;
+
+            // ប្រអប់សម្រាប់វាយចំណងជើងរឿង និងដំណើររឿង
+            late TextEditingController _titleController;
+            late TextEditingController _synopsisController;
 
             final List<Map<String, String>> _beats = [
               {
                 'beat': '1',
                 'title': 'សារធាតុគីមីលេចធ្លាយ & ច្រកត្រួតពិនិត្យ',
                 'time': '00:00 - 03:15',
-                'scene': '[ឈុតឆាក]: ប្លង់កាមេរ៉ាបង្ហាញពីផ្លូវលំជនបទស្ងាត់ជ្រងំជិតក្រុងប៊ីសាន។ មានប៉ុស្តិ៍ត្រួតពិនិត្យចត្តាឡីស័ក (Quarantine Checkpoint) ដែលទាហាន និងមន្ត្រីពាក់ឧបករណ៍ការពារជាតិគីមីកំពុងបាញ់ថ្នាំសម្លាប់មេរោគលើរថយន្តគ្រប់គ្រឿង។',
+                'scene': '[ឈុតឆាក]: ប្លង់កាមេរ៉ាបង្ហាញពីផ្លូវលំជនបទស្ងាត់ជ្រងំជិតក្រុងប៊ីសាន។ មានប៉ុស្តិ៍ត្រួតពិនិត្យចត្តាឡីស័កដែលទាហានកំពុងបាញ់ថ្នាំសម្លាប់មេរោគ។',
                 'audio': '[សំឡេងបន្លឺ]: សំឡេងកកិតហ្វ្រាំងរថយន្ត និងសំឡេងម៉ាស៊ីនបាញ់ថ្នាំគីមីបន្លឺឡើងខ្សាវៗ',
                 'narration': 'រឿងរ៉ាវបានចាប់ផ្ដើមឡើងនៅពេលដែលរថយន្តដឹកទំនិញមួយគ្រឿងបានបើកកាត់ប៉ុស្តិ៍ត្រួតពិនិត្យ... គ្មាននរណាម្នាក់ដឹងទេថាសោកនាដកម្មដ៏រន្ធត់កំពុងតែរង់ចាំពួកគេ...',
-                'emotion': '[អារម្មណ៍តួអង្គ]: តានតឹង សង្ស័យ ភ័យខ្លាច',
               },
               {
                 'beat': '2',
@@ -85,37 +92,74 @@ jobs:
                 'scene': '[ឈុតឆាក]: ស្ថានីយរថភ្លើងក្រុងសេអ៊ូលដ៏អ៊ូអរ។ មនុស្សម្នាជាច្រើនកំពុងប្រញាប់ប្រញាល់ឡើងរថភ្លើង KTX ល្បឿនលឿន។',
                 'audio': '[សំឡេងបន្លឺ]: សំឡេងឧគ្ឃោសនសព្ទស្ថានីយ និងសំឡេងស៊ីផ្លេរថភ្លើងបន្លឺឡើង',
                 'narration': 'ស៊ុកវូ និងកូនស្រីតូច ស៊ូអាន បានឡើងលើរថភ្លើងដោយសុវត្ថិភាព ប៉ុន្តែនៅវិនាទីចុងក្រោយ ស្រមោលនារីម្នាក់ដែលមានស្នាមរបួសជើងបានលបចូលតាមទ្វារទូរថភ្លើង...',
-                'emotion': '[អារម្មណ៍តួអង្គ]: ស្ងប់ស្ងាត់មុនព្យុះសង្ឃរា',
               },
             ];
 
             final List<Map<String, String>> _sfxItems = [
-              {'name': 'បាសបន្លឺធ្ងន់', 'cue': 'Sub Bass Boom', 'desc': 'សម្រាប់ឈុតឆាករបត់សំខាន់'},
-              {'name': 'បេះដូងលោត', 'cue': 'Heartbeat', 'desc': 'ឈុតឆាកតានតឹងភ័យខ្លាច'},
-              {'name': 'សំឡេងតានតឹង', 'cue': 'Tension Riser', 'desc': 'កើនកម្ដៅមុនគ្រោះថ្នាក់'},
-              {'name': 'កន្ត្រាក់អារម្មណ៍', 'cue': 'Jump Scare', 'desc': 'ខ្មោចឆៅលេចឡើងភ្លាមៗ'},
-              {'name': 'បរិយាកាសព្រឺរោម', 'cue': 'Eerie Drone', 'desc': 'សូរសំឡេងអាថ៌កំបាំង'},
-              {'name': 'ទះទ្វារ / ដែកកកិត', 'cue': 'Metal Impact', 'desc': 'ទ្វាររថភ្លើងបិទគាំង'},
+              {'name': 'បាសបន្លឺធ្ងន់', 'cue': 'Sub Bass Boom'},
+              {'name': 'បេះដូងលោត', 'cue': 'Heartbeat'},
+              {'name': 'សំឡេងតានតឹង', 'cue': 'Tension Riser'},
+              {'name': 'កន្ត្រាក់អារម្មណ៍', 'cue': 'Jump Scare'},
+              {'name': 'បរិយាកាសព្រឺរោម', 'cue': 'Eerie Drone'},
+              {'name': 'ទះទ្វារ / ដែកកកិត', 'cue': 'Metal Impact'},
             ];
+
+            @override
+            void initState() {
+              super.initState();
+              _titleController = TextEditingController(text: 'Train to Busan (រថភ្លើងទៅកាន់ប៊ូសាន)');
+              _synopsisController = TextEditingController(
+                text: 'Script សម្រាយរឿងពេញលេញ Beat-by-Beat លម្អិតឈុតឆាកម្ដងមួយៗ និងបច្ចេកទេសកាត់ត។',
+              );
+              _initTts();
+            }
+
+            void _initTts() async {
+              await _flutterTts.setLanguage("km-KH");
+              await _flutterTts.setSpeechRate(0.85);
+              await _flutterTts.setPitch(1.0);
+
+              _flutterTts.setCompletionHandler(() {
+                setState(() => _isPlayingVoice = false);
+              });
+            }
+
+            Future<void> _speakText(String text) async {
+              if (_isPlayingVoice) {
+                await _flutterTts.stop();
+                setState(() => _isPlayingVoice = false);
+              } else {
+                setState(() => _isPlayingVoice = true);
+                await _flutterTts.speak(text);
+              }
+            }
+
+            @override
+            void dispose() {
+              _flutterTts.stop();
+              _titleController.dispose();
+              _synopsisController.dispose();
+              super.dispose();
+            }
 
             @override
             Widget build(BuildContext context) {
               return Scaffold(
                 appBar: PreferredSize(
-                  preferredSize: const Size.fromHeight(105),
+                  preferredSize: const Size.fromHeight(115),
                   child: AppBar(
                     backgroundColor: const Color(0xFF0F172A),
                     elevation: 1,
                     title: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
+                      children: [
+                        const Text(
                           'MOVIE RECAP STUDIO • ស្ទូឌីយោសម្រាយរឿងខ្មែរ',
                           style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          'Train to Busan (រថភ្លើងទៅកាន់ប៊ូសាន)',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                          _titleController.text,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                       ],
                     ),
@@ -129,12 +173,8 @@ jobs:
                           children: [
                             _buildTabButton('Script', Icons.layers, const Color(0xFFF59E0B), Colors.black),
                             _buildTabButton('អាន', Icons.tv, Colors.grey[800]!, Colors.white70),
-                            _buildTabButton('App', Icons.smartphone, Colors.grey[800]!, const Color(0xFF22D3EE)),
                             _buildTabButton('SFX', Icons.music_note, Colors.grey[800]!, Colors.white70),
-                            _buildTabButton('នាំចេញ', Icons.download, Colors.grey[800]!, Colors.white70),
-                            _buildTabButton('Clone', Icons.mic, const Color(0xFF581C87), const Color(0xFFD8B4FE)),
-                            _buildTabButton('Edge TTS', Icons.record_voice_over, const Color(0xFF064E3B), const Color(0xFF34D399)),
-                            _buildTabButton('ថ្មី', Icons.auto_awesome, const Color(0xFFF43F5E), Colors.white),
+                            _buildTabButton('កែសម្រួល', Icons.edit_note, Colors.indigo[800]!, Colors.white),
                           ],
                         ),
                       ),
@@ -171,6 +211,8 @@ jobs:
                 return _buildTeleprompterView();
               } else if (_activeTab == 'SFX') {
                 return _buildSoundboardView();
+              } else if (_activeTab == 'កែសម្រួល') {
+                return _buildEditStoryView();
               } else {
                 return _buildScriptEditorView();
               }
@@ -202,38 +244,33 @@ jobs:
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Train to Busan - រឿងពេញ Master Edition (00:00 - 90:00)',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                        Text(
+                          _titleController.text,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
-                          'Script សម្រាយរឿងពេញលេញ Beat-by-Beat លម្អិតឈុតឆាកម្ដងមួយៗ និងបច្ចេកទេសកាត់ត។',
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        Text(
+                          _synopsisController.text,
+                          style: const TextStyle(fontSize: 12, color: Colors.white70),
                         ),
                         const SizedBox(height: 10),
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.tv, size: 16, color: Colors.black),
-                          label: const Text('បើកផ្ទាំងអាន Teleprompter', style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
-                          onPressed: () => setState(() => _activeTab = 'អាន'),
+                        Row(
+                          children: [
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.tv, size: 16, color: Colors.black),
+                              label: const Text('ផ្ទាំងអាន', style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+                              onPressed: () => setState(() => _activeTab = 'អាន'),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+                              label: const Text('ប្តូរចំណងជើង', style: TextStyle(color: Colors.white, fontSize: 11)),
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF334155)),
+                              onPressed: () => setState(() => _activeTab = 'កែសម្រួល'),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0B1329),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Wrap(
-                      spacing: 8,
-                      children: const [
-                        Chip(backgroundColor: Color(0xFF083344), label: Text('[ឈុតឆាក]: រូបភាព/ប្លង់', style: TextStyle(color: Color(0xFF22D3EE), fontSize: 10))),
-                        Chip(backgroundColor: Color(0xFF451A03), label: Text('[សំឡេងបន្លឺ]: SFX/ភ្លេង', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 10))),
-                        Chip(backgroundColor: Color(0xFF064E3B), label: Text('[ពន្យល់សាច់រឿង]: ពាក្យអាន', style: TextStyle(color: Color(0xFF34D399), fontSize: 10))),
                       ],
                     ),
                   ),
@@ -254,7 +291,7 @@ jobs:
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.between,
                         children: [
                           Row(
                             children: [
@@ -267,7 +304,11 @@ jobs:
                               Text(b['title']!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
                             ],
                           ),
-                          Text(b['time']!, style: const TextStyle(color: Colors.amber, fontSize: 11, fontFamily: 'monospace')),
+                          // ប៊ូតុងអានសំឡេងខ្មែរ
+                          IconButton(
+                            icon: Icon(_isPlayingVoice ? Icons.stop_circle : Icons.volume_up, color: Colors.cyan, size: 24),
+                            onPressed: () => _speakText(b['narration']!),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -291,6 +332,52 @@ jobs:
                     ],
                   ),
                 ),
+              );
+            }
+
+            Widget _buildEditStoryView() {
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  const Text('✏️ កែសម្រួលចំណងជើងរឿង និងដំណើររឿង', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.amber)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _titleController,
+                    decoration: InputDecoration(
+                      labelText: 'ចំណងជើងរឿង (Movie Title)',
+                      filled: true,
+                      fillColor: const Color(0xFF1E293B),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _synopsisController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: 'ដំណើររឿងសង្ខេប (Synopsis)',
+                      filled: true,
+                      fillColor: const Color(0xFF1E293B),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.check, color: Colors.black),
+                    label: const Text('រក្សាទុកការកែប្រែ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF59E0B),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      setState(() => _activeTab = 'Script');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('រក្សាទុកចំណងជើងរឿងបានជោគជ័យ!')),
+                      );
+                    },
+                  ),
+                ],
               );
             }
 
@@ -348,49 +435,4 @@ jobs:
                   crossAxisCount: 2,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 1.25,
-                ),
-                itemCount: _sfxItems.length,
-                itemBuilder: (context, idx) {
-                  final s = _sfxItems[idx];
-                  return InkWell(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('ចាក់សំឡេង៖ ${s['name']} (${s['cue']})'), duration: const Duration(milliseconds: 600)),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.amber.withOpacity(0.2)),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.graphic_eq, color: Color(0xFFF59E0B), size: 26),
-                          const SizedBox(height: 6),
-                          Text(s['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                          Text(s['cue']!, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            }
-          }
-          EOF
-
-          flutter build apk --release
-          mkdir -p ../build_output
-          cp build/app/outputs/flutter-apk/app-release.apk ../build_output/
-
-      - name: Upload APK Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v5.0.0-native-${{ github.run_number }}
-          name: RecapCraft Native Studio v5.0
-          files: build_output/app-release.apk
-          
+                  childAspectRatio: 1.25
