@@ -37,19 +37,18 @@ jobs:
             unzip -o khmer-movie-recap-script-studio.zip
           fi
 
-          # 2. ដំឡើងបណ្ណាល័យ Node ដោយប្រើ --legacy-peer-deps ដើម្បីដោះស្រាយបញ្ហា ERESOLVE
+          # 2. ដំឡើងបណ្ណាល័យ Node និង Build Web production
           npm install --legacy-peer-deps
           npm run build || true
 
           # 3. បង្កើតគម្រោង Flutter
           flutter create --org com.recapcraft --project-name recapcraft_app app_runner
           cd app_runner
-          flutter pub add webview_flutter
 
           # បើកសិទ្ធិ Internet
           sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
-          # 4. ចម្លងឯកសារ dist ចូល assets របស់ Flutter
+          # 4. ចម្លងឯកសារ web ចូល assets
           mkdir -p assets/web
           if [ -d "../dist" ]; then
             cp -r ../dist/* assets/web/
@@ -57,14 +56,40 @@ jobs:
             cp ../index.html assets/web/
           fi
 
-          # កែសម្រួលផ្លូវ asset ក្នុង index.html ឱ្យដំណើរការក្នុង WebView (Relative paths)
+          # កែសម្រួលផ្លូវ asset ក្នុង index.html ឱ្យដំណើរការស្រួលក្នុង WebView
           sed -i 's|"/assets/|"assets/|g' assets/web/index.html 2>/dev/null || true
           sed -i 's|"/|""|g' assets/web/index.html 2>/dev/null || true
 
-          # 5. កំណត់ pubspec.yaml
-          printf "\nflutter:\n  assets:\n    - assets/web/\n    - assets/web/assets/\n" >> pubspec.yaml
+          # 5. បង្កើត pubspec.yaml ពេញលេញ និងត្រឹមត្រូវ 100% (គ្មានការស្ទួន key flutter: ទៀតឡើយ)
+          cat << 'EOF' > pubspec.yaml
+          name: recapcraft_app
+          description: "Khmer Movie Recap Script Studio"
+          publish_to: 'none'
+          version: 1.0.0+1
 
-          # 6. សរសេរកូដ Flutter WebView
+          environment:
+            sdk: '>=3.0.0 <4.0.0'
+
+          dependencies:
+            flutter:
+              sdk: flutter
+            webview_flutter: ^4.8.0
+
+          dev_dependencies:
+            flutter_test:
+              sdk: flutter
+
+          flutter:
+            uses-material-design: true
+            assets:
+              - assets/web/
+              - assets/web/assets/
+          EOF
+
+          # 6. ដំឡើង dependencies តាម pubspec.yaml ថ្មី
+          flutter pub get
+
+          # 7. សរសេរកូដ Flutter WebView
           cat << 'END_DART' > lib/main.dart
           import 'package:flutter/material.dart';
           import 'package:webview_flutter/webview_flutter.dart';
@@ -126,7 +151,7 @@ jobs:
           }
           END_DART
 
-          # 7. Build APK
+          # 8. Build ចេញជាឯកសារ APK
           flutter build apk --release
           mkdir -p ../build_output
           cp build/app/outputs/flutter-apk/app-release.apk ../build_output/
@@ -134,7 +159,6 @@ jobs:
       - name: Upload APK Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.3.0-studio-${{ github.run_number }}
-          name: RecapCraft Full Studio v4.3
+          tag_name: v4.4.0-studio-${{ github.run_number }}
+          name: RecapCraft Full Studio v4.4
           files: build_output/app-release.apk
-          
