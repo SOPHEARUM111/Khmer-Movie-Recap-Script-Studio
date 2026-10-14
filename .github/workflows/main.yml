@@ -1,4 +1,4 @@
-name: Build Working Voice Studio APK
+name: Build WebView Studio APK
 
 on:
   workflow_dispatch:
@@ -13,6 +13,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -25,414 +30,126 @@ jobs:
           flutter-version: '3.22.x'
           channel: 'stable'
 
-      - name: Build Full Interactive Mobile Studio
+      - name: Package Web into Flutter WebView
         run: |
-          flutter create --org com.recapcraft --project-name recapcraft_app studio_interactive_app
-          cd studio_interactive_app
-          flutter pub add flutter_tts cupertino_icons
+          # 1. ពន្លា zip ប្រសិនបើមាន
+          if [ -f "khmer-movie-recap-script-studio.zip" ]; then
+            unzip -o khmer-movie-recap-script-studio.zip
+          fi
 
-          # បើកសិទ្ធិ Internet និងសម្លេងលើ Android
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>' android/app/src/main/AndroidManifest.xml
+          # 2. បង្កើតឯកសារ Web Production (កែសម្រួល base path ឱ្យស្គាល់ local asset)
+          npm install --legacy-peer-deps
+          npm run build || true
 
-          cat << 'EOF' > lib/main.dart
+          # 3. បង្កើតគម្រោង Flutter
+          flutter create --org com.recapcraft --project-name recapcraft_app app_runner
+          cd app_runner
+
+          # បើកសិទ្ធិ Internet
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
+
+          # 4. ចម្លងឯកសារ dist ចូលទៅក្នុង assets
+          mkdir -p assets/web
+          if [ -d "../dist" ]; then
+            cp -r ../dist/* assets/web/
+          else
+            cp ../index.html assets/web/
+          fi
+
+          # 5. រៀបចំ pubspec.yaml
+          cat << 'EOF' > pubspec.yaml
+          name: recapcraft_app
+          description: "Khmer Movie Recap Script Studio WebView"
+          publish_to: 'none'
+          version: 1.0.0+1
+
+          environment:
+            sdk: '>=3.0.0 <4.0.0'
+
+          dependencies:
+            flutter:
+              sdk: flutter
+            webview_flutter: ^4.8.0
+
+          flutter:
+            uses-material-design: true
+            assets:
+              - assets/web/
+              - assets/web/assets/
+          EOF
+
+          flutter pub get
+
+          # 6. កូដ Flutter ផ្ទុកឯកសារ WebView ក្នុងស្រុក
+          cat << 'END_DART' > lib/main.dart
           import 'package:flutter/material.dart';
-          import 'package:flutter_tts/flutter_tts.dart';
+          import 'package:webview_flutter/webview_flutter.dart';
 
           void main() {
-            runApp(const RecapStudioApp());
+            WidgetsFlutterBinding.ensureInitialized();
+            runApp(const MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: WebViewApp(),
+            ));
           }
 
-          class RecapStudioApp extends StatelessWidget {
-            const RecapStudioApp({super.key});
+          class WebViewApp extends StatefulWidget {
+            const WebViewApp({super.key});
 
             @override
-            Widget build(BuildContext context) {
-              return MaterialApp(
-                title: 'Khmer Movie Recap Script Studio',
-                debugShowCheckedModeBanner: false,
-                theme: ThemeData.dark().copyWith(
-                  scaffoldBackgroundColor: const Color(0xFF030712),
-                  primaryColor: const Color(0xFFF59E0B),
-                ),
-                home: const StudioMainScreen(),
-              );
-            }
+            State<WebViewApp> createState() => _WebViewAppState();
           }
 
-          class StudioMainScreen extends StatefulWidget {
-            const StudioMainScreen({super.key});
-
-            @override
-            State<StudioMainScreen> createState() => _StudioMainScreenState();
-          }
-
-          class _StudioMainScreenState extends State<StudioMainScreen> {
-            String _activeTab = 'Script';
-            double _fontSize = 22.0;
-            final FlutterTts _flutterTts = FlutterTts();
-            bool _isPlayingVoice = false;
-
-            // ប្រអប់សម្រាប់វាយចំណងជើងរឿង និងដំណើររឿង
-            late TextEditingController _titleController;
-            late TextEditingController _synopsisController;
-
-            final List<Map<String, String>> _beats = [
-              {
-                'beat': '1',
-                'title': 'សារធាតុគីមីលេចធ្លាយ & ច្រកត្រួតពិនិត្យ',
-                'time': '00:00 - 03:15',
-                'scene': '[ឈុតឆាក]: ប្លង់កាមេរ៉ាបង្ហាញពីផ្លូវលំជនបទស្ងាត់ជ្រងំជិតក្រុងប៊ីសាន។ មានប៉ុស្តិ៍ត្រួតពិនិត្យចត្តាឡីស័កដែលទាហានកំពុងបាញ់ថ្នាំសម្លាប់មេរោគ។',
-                'audio': '[សំឡេងបន្លឺ]: សំឡេងកកិតហ្វ្រាំងរថយន្ត និងសំឡេងម៉ាស៊ីនបាញ់ថ្នាំគីមីបន្លឺឡើងខ្សាវៗ',
-                'narration': 'រឿងរ៉ាវបានចាប់ផ្ដើមឡើងនៅពេលដែលរថយន្តដឹកទំនិញមួយគ្រឿងបានបើកកាត់ប៉ុស្តិ៍ត្រួតពិនិត្យ... គ្មាននរណាម្នាក់ដឹងទេថាសោកនាដកម្មដ៏រន្ធត់កំពុងតែរង់ចាំពួកគេ...',
-              },
-              {
-                'beat': '2',
-                'title': 'ការឡើងជិះរថភ្លើង KTX ទៅកាន់ប៊ូសាន',
-                'time': '03:15 - 08:30',
-                'scene': '[ឈុតឆាក]: ស្ថានីយរថភ្លើងក្រុងសេអ៊ូលដ៏អ៊ូអរ។ មនុស្សម្នាជាច្រើនកំពុងប្រញាប់ប្រញាល់ឡើងរថភ្លើង KTX ល្បឿនលឿន។',
-                'audio': '[សំឡេងបន្លឺ]: សំឡេងឧគ្ឃោសនសព្ទស្ថានីយ និងសំឡេងស៊ីផ្លេរថភ្លើងបន្លឺឡើង',
-                'narration': 'ស៊ុកវូ និងកូនស្រីតូច ស៊ូអាន បានឡើងលើរថភ្លើងដោយសុវត្ថិភាព ប៉ុន្តែនៅវិនាទីចុងក្រោយ ស្រមោលនារីម្នាក់ដែលមានស្នាមរបួសជើងបានលបចូលតាមទ្វារទូរថភ្លើង...',
-              },
-            ];
-
-            final List<Map<String, String>> _sfxItems = [
-              {'name': 'បាសបន្លឺធ្ងន់', 'cue': 'Sub Bass Boom'},
-              {'name': 'បេះដូងលោត', 'cue': 'Heartbeat'},
-              {'name': 'សំឡេងតានតឹង', 'cue': 'Tension Riser'},
-              {'name': 'កន្ត្រាក់អារម្មណ៍', 'cue': 'Jump Scare'},
-              {'name': 'បរិយាកាសព្រឺរោម', 'cue': 'Eerie Drone'},
-              {'name': 'ទះទ្វារ / ដែកកកិត', 'cue': 'Metal Impact'},
-            ];
+          class _WebViewAppState extends State<WebViewApp> {
+            late final WebViewController _controller;
+            bool _isLoading = true;
 
             @override
             void initState() {
               super.initState();
-              _titleController = TextEditingController(text: 'Train to Busan (រថភ្លើងទៅកាន់ប៊ូសាន)');
-              _synopsisController = TextEditingController(
-                text: 'Script សម្រាយរឿងពេញលេញ Beat-by-Beat លម្អិតឈុតឆាកម្ដងមួយៗ និងបច្ចេកទេសកាត់ត។',
-              );
-              _initTts();
-            }
-
-            void _initTts() async {
-              await _flutterTts.setLanguage("km-KH");
-              await _flutterTts.setSpeechRate(0.85);
-              await _flutterTts.setPitch(1.0);
-
-              _flutterTts.setCompletionHandler(() {
-                setState(() => _isPlayingVoice = false);
-              });
-            }
-
-            Future<void> _speakText(String text) async {
-              if (_isPlayingVoice) {
-                await _flutterTts.stop();
-                setState(() => _isPlayingVoice = false);
-              } else {
-                setState(() => _isPlayingVoice = true);
-                await _flutterTts.speak(text);
-              }
-            }
-
-            @override
-            void dispose() {
-              _flutterTts.stop();
-              _titleController.dispose();
-              _synopsisController.dispose();
-              super.dispose();
+              _controller = WebViewController()
+                ..setJavaScriptMode(JavaScriptMode.unrestricted)
+                ..setBackgroundColor(const Color(0xFF090D16))
+                ..setNavigationDelegate(
+                  NavigationDelegate(
+                    onPageFinished: (String url) {
+                      setState(() {
+                        _isLoading = false;
+                      });
+                    },
+                  ),
+                )
+                ..loadFlutterAsset('assets/web/index.html');
             }
 
             @override
             Widget build(BuildContext context) {
               return Scaffold(
-                appBar: PreferredSize(
-                  preferredSize: const Size.fromHeight(115),
-                  child: AppBar(
-                    backgroundColor: const Color(0xFF0F172A),
-                    elevation: 1,
-                    title: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'MOVIE RECAP STUDIO • ស្ទូឌីយោសម្រាយរឿងខ្មែរ',
-                          style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          _titleController.text,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                    bottom: PreferredSize(
-                      preferredSize: const Size.fromHeight(50),
-                      child: Container(
-                        height: 48,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            _buildTabButton('Script', Icons.layers, const Color(0xFFF59E0B), Colors.black),
-                            _buildTabButton('អាន', Icons.tv, Colors.grey[800]!, Colors.white70),
-                            _buildTabButton('SFX', Icons.music_note, Colors.grey[800]!, Colors.white70),
-                            _buildTabButton('កែសម្រួល', Icons.edit_note, Colors.indigo[800]!, Colors.white),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                body: _buildCurrentView(),
-              );
-            }
-
-            Widget _buildTabButton(String label, IconData icon, Color bgColor, Color textColor) {
-              final bool isSelected = _activeTab == label;
-              return Container(
-                margin: const EdgeInsets.only(right: 6),
-                child: ElevatedButton.icon(
-                  icon: Icon(icon, size: 14, color: isSelected ? Colors.black : textColor),
-                  label: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSelected ? Colors.black : textColor)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isSelected ? const Color(0xFFF59E0B) : bgColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _activeTab = label;
-                    });
-                  },
-                ),
-              );
-            }
-
-            Widget _buildCurrentView() {
-              if (_activeTab == 'អាន') {
-                return _buildTeleprompterView();
-              } else if (_activeTab == 'SFX') {
-                return _buildSoundboardView();
-              } else if (_activeTab == 'កែសម្រួល') {
-                return _buildEditStoryView();
-              } else {
-                return _buildScriptEditorView();
-              }
-            }
-
-            Widget _buildScriptEditorView() {
-              return ListView(
-                padding: const EdgeInsets.all(14),
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.amber.withOpacity(0.3)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'ភ័យរន្ធត់ / ខ្មោចឆៅ / មនោសញ្ចេតនា (ZOMBIE THRILLER)',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _titleController.text,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _synopsisController.text,
-                          style: const TextStyle(fontSize: 12, color: Colors.white70),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.tv, size: 16, color: Colors.black),
-                              label: const Text('ផ្ទាំងអាន', style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
-                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
-                              onPressed: () => setState(() => _activeTab = 'អាន'),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
-                              label: const Text('ប្តូរចំណងជើង', style: TextStyle(color: Colors.white, fontSize: 11)),
-                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF334155)),
-                              onPressed: () => setState(() => _activeTab = 'កែសម្រួល'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  ..._beats.map((b) => _buildBeatCard(b)).toList(),
-                ],
-              );
-            }
-
-            Widget _buildBeatCard(Map<String, String> b) {
-              return Card(
-                color: const Color(0xFF0F172A),
-                margin: const EdgeInsets.only(bottom: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                backgroundColor: const Color(0xFF090D16),
+                body: SafeArea(
+                  child: Stack(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.between,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 12,
-                                backgroundColor: const Color(0xFFF59E0B),
-                                child: Text(b['beat']!, style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(b['title']!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
-                            ],
-                          ),
-                          // ប៊ូតុងអានសំឡេងខ្មែរ
-                          IconButton(
-                            icon: Icon(_isPlayingVoice ? Icons.stop_circle : Icons.volume_up, color: Colors.cyan, size: 24),
-                            onPressed: () => _speakText(b['narration']!),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: const Color(0xFF020617), borderRadius: BorderRadius.circular(8)),
-                        child: Text(b['scene']!, style: const TextStyle(color: Color(0xFF22D3EE), fontSize: 11)),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: const Color(0xFF020617), borderRadius: BorderRadius.circular(8)),
-                        child: Text(b['audio']!, style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 11)),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: const Color(0xFF064E3B).withOpacity(0.3), borderRadius: BorderRadius.circular(10)),
-                        child: Text(b['narration']!, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5)),
-                      ),
+                      WebViewWidget(controller: _controller),
+                      if (_isLoading)
+                        const Center(
+                          child: CircularProgressIndicator(color: Color(0xFFF59E0B)),
+                        ),
                     ],
                   ),
                 ),
               );
             }
+          }
+          END_DART
 
-            Widget _buildEditStoryView() {
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  const Text('✏️ កែសម្រួលចំណងជើងរឿង និងដំណើររឿង', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.amber)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _titleController,
-                    decoration: InputDecoration(
-                      labelText: 'ចំណងជើងរឿង (Movie Title)',
-                      filled: true,
-                      fillColor: const Color(0xFF1E293B),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _synopsisController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: 'ដំណើររឿងសង្ខេប (Synopsis)',
-                      filled: true,
-                      fillColor: const Color(0xFF1E293B),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.check, color: Colors.black),
-                    label: const Text('រក្សាទុកការកែប្រែ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF59E0B),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () {
-                      setState(() => _activeTab = 'Script');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('រក្សាទុកចំណងជើងរឿងបានជោគជ័យ!')),
-                      );
-                    },
-                  ),
-                ],
-              );
-            }
+          # 7. Build ចេញជា APK
+          flutter build apk --release
+          mkdir -p ../build_output
+          cp build/app/outputs/flutter-apk/app-release.apk ../build_output/
 
-            Widget _buildTeleprompterView() {
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        const Text('ទំហំអក្សរ:', style: TextStyle(fontSize: 12, color: Colors.white70)),
-                        Expanded(
-                          child: Slider(
-                            value: _fontSize,
-                            min: 16,
-                            max: 38,
-                            activeColor: const Color(0xFFF59E0B),
-                            onChanged: (val) => setState(() => _fontSize = val),
-                          ),
-                        ),
-                        Text('${_fontSize.toInt()}px', style: const TextStyle(color: Color(0xFFF59E0B))),
-                      ],
-                    ),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF020617),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white12),
-                        ),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: _beats.map((b) => Padding(
-                              padding: const EdgeInsets.only(bottom: 24),
-                              child: Text(
-                                b['narration']!,
-                                style: TextStyle(fontSize: _fontSize, color: Colors.white, height: 1.9, fontWeight: FontWeight.w500),
-                              ),
-                            )).toList(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            Widget _buildSoundboardView() {
-              return GridView.builder(
-                padding: const EdgeInsets.all(14),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 1.25
+      - name: Upload APK Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v7.0.0-webview-${{ github.run_number }}
+          name: RecapCraft Studio WebView v7.0
+          files: build_output/app-release.apk
