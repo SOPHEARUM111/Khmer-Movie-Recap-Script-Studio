@@ -150,4 +150,4 @@ EOF
           tag_name: v4.1.0-offline-${{ github.run_number }}
           name: RecapCraft Studio Offline v4.1
           files: build_output/app-release.apk
-          
+
