@@ -1,4 +1,4 @@
-name: Build Full Web Studio APK
+name: Build Offline Studio APK
 
 on:
   workflow_dispatch:
@@ -13,11 +13,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -30,33 +25,41 @@ jobs:
           flutter-version: '3.22.x'
           channel: 'stable'
 
-      - name: Extract Project & Package Flutter APK
+      - name: Bundle Web Assets into Flutter App
         run: |
-          # 1. ពន្លាឯកសារ zip បើមានក្នុង repository
+          # 1. ពន្លាឯកសារគម្រោង Studio
           if [ -f "khmer-movie-recap-script-studio.zip" ]; then
             unzip -o khmer-movie-recap-script-studio.zip
           fi
 
-          # 2. បង្កើតគម្រោង Flutter App ដែលមាន WebView
-          flutter create --org com.recapcraft --project-name recapcraft_app mobile_app
-          cd mobile_app
+          # 2. បង្កើតគម្រោង Flutter ថ្មី
+          flutter create --org com.recapcraft --project-name recapcraft_app studio_offline_app
+          cd studio_offline_app
           flutter pub add webview_flutter
 
-          # បើកសិទ្ធិ Internet លើ Android
+          # 3. បញ្ចូលឯកសារ Web ទៅក្នុង Assets របស់ App
+          mkdir -p assets/web
+          cp -r ../src assets/web/ 2>/dev/null || true
+          cp ../index.html assets/web/ 2>/dev/null || true
+
+          # 4. កំណត់ pubspec.yaml ដើម្បីទទួលស្គាល់ Folder assets
+          sed -i '/flutter:/a \  assets:\n    - assets/web/\n    - assets/web/src/' pubspec.yaml
+
+          # បើកសិទ្ធិ Internet
           sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
-          # 3. សរសេរកូដ WebView សម្រាប់ដំណើរការផ្ទាំង Web Studio ពេញលេញលើទូរស័ព្ទ
+          # 5. សរសេរកូដ Flutter ដើម្បីដំណើរការឯកសារ Studio ផ្ទាល់ក្នុងទូរស័ព្ទ
           cat << 'EOF' > lib/main.dart
           import 'package:flutter/material.dart';
           import 'package:webview_flutter/webview_flutter.dart';
 
           void main() {
             WidgetsFlutterBinding.ensureInitialized();
-            runApp(const FullStudioApp());
+            runApp(const OfflineStudioApp());
           }
 
-          class FullStudioApp extends StatelessWidget {
-            const FullStudioApp({super.key});
+          class OfflineStudioApp extends StatelessWidget {
+            const OfflineStudioApp({super.key});
 
             @override
             Widget build(BuildContext context) {
@@ -64,19 +67,19 @@ jobs:
                 title: 'Khmer Movie Recap Script Studio',
                 debugShowCheckedModeBanner: false,
                 theme: ThemeData.dark(),
-                home: const WebViewStudioScreen(),
+                home: const StudioScreen(),
               );
             }
           }
 
-          class WebViewStudioScreen extends StatefulWidget {
-            const WebViewStudioScreen({super.key});
+          class StudioScreen extends StatefulWidget {
+            const StudioScreen({super.key});
 
             @override
-            State<WebViewStudioScreen> createState() => _WebViewStudioScreenState();
+            State<StudioScreen> createState() => _StudioScreenState();
           }
 
-          class _WebViewStudioScreenState extends State<WebViewStudioScreen> {
+          class _StudioScreenState extends State<StudioScreen> {
             late final WebViewController _controller;
             bool _isLoading = true;
 
@@ -95,7 +98,7 @@ jobs:
                     },
                   ),
                 )
-                ..loadRequest(Uri.parse('https://sophearum111.github.io/Khmer-Movie-Recap-Script-Studio/'));
+                ..loadFlutterAsset('assets/web/index.html');
             }
 
             @override
@@ -118,7 +121,7 @@ jobs:
           }
           EOF
 
-          # 4. Build ចេញជាឯកសារ APK
+          # 6. Build ចេញជាឯកសារ APK
           flutter build apk --release
           mkdir -p ../build_output
           cp build/app/outputs/flutter-apk/app-release.apk ../build_output/
@@ -126,7 +129,7 @@ jobs:
       - name: Upload APK Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.1.0-studio-${{ github.run_number }}
-          name: Khmer Movie Recap Studio v3.1
+          tag_name: v4.0.0-offline-${{ github.run_number }}
+          name: RecapCraft Studio Offline v4.0
           files: build_output/app-release.apk
           
