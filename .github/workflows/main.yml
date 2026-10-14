@@ -1,40 +1,162 @@
 name: Build and Release APK
-
 on:
-  workflow_dispatch:
-
+workflow_dispatch:
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.x'
-          channel: 'stable'
-
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release
-
-      - name: Upload APK Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0-${{ github.run_number }}
-          name: RecapCraft AI v1.0.0
-          files: build/app/outputs/flutter-apk/app-release.apk
-          
+build:
+runs-on: ubuntu-latest
+permissions:
+contents: write
+steps:
+- name: Checkout Code
+uses: actions/checkout@v4
+- name: Setup Java 17
+uses: actions/setup-java@v4
+with:
+distribution: 'zulu'
+java-version: '17'
+- name: Setup Flutter
+uses: subosito/flutter-action@v2
+with:
+flutter-version: '3.22.x'
+channel: 'stable'
+- name: Auto Create Flutter Project & Code
+run: |
+# ១. បង្កើតគម្រោង Flutter ដោយស្វ័យប្រវត្តិលើ Cloud
+flutter create --org com.recapcraft --project-name recapcraft_app .
+# ២. បន្ថែម Package
+flutter pub add http cupertino_icons
+# ៣. បើកសិទ្ធិ Internet លើ Android
+sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' android/app/src/main/AndroidManifest.xml || true
+# ៤. បញ្ចូលកូដ App RecapCraft AI ចូលក្នុង lib/main.dart
+cat << 'EOF' > lib/main.dart
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+const String kBackendBaseUrl = "http://10.0.2.2:8000";
+void main() {
+runApp(const MovieRecapApp());
+}
+class MovieRecapApp extends StatelessWidget {
+const MovieRecapApp({super.key});
+@override
+Widget build(BuildContext context) {
+return MaterialApp(
+title: 'RecapCraft AI',
+debugShowCheckedModeBanner: false,
+theme: ThemeData.dark().copyWith(
+scaffoldBackgroundColor: const Color(0xFF07090E),
+primaryColor: const Color(0xFFE11D48),
+),
+home: const HomeScreen(),
+);
+}
+}
+class HomeScreen extends StatefulWidget {
+const HomeScreen({super.key});
+@override
+State<HomeScreen> createState() => _HomeScreenState();
+}
+class _HomeScreenState extends State<HomeScreen> {
+final TextEditingController _titleController = TextEditingController(text: "Train to Busan");
+int _selectedDuration = 90;
+bool _includeMonster = true;
+final List<Map<String, dynamic>> _characters = [
+{"role": "អ្នកសម្រាយ", "icon": "🎙️", "color": Colors.indigo},
+{"role": "ក្មេងប្រុស", "icon": "👦", "color": Colors.blue},
+{"role": "ក្មេងស្រី", "icon": "👧", "color": Colors.pink},
+{"role": "មនុស្សប្រុស", "icon": "👨", "color": Colors.cyan},
+{"role": "មនុស្សស្រី", "icon": "👩", "color": Colors.green},
+{"role": "មនុស្សចាស់", "icon": "👴", "color": Colors.amber},
+{"role": "បិសាច", "icon": "👹", "color": Colors.red},
+];
+@override
+Widget build(BuildContext context) {
+return Scaffold(
+appBar: AppBar(
+backgroundColor: const Color(0xFF0F172A),
+title: const Text("RecapCraft AI Studio", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+),
+body: SingleChildScrollView(
+padding: const EdgeInsets.all(16),
+child: Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+Container(
+padding: const EdgeInsets.all(14),
+decoration: BoxDecoration(
+color: const Color(0xFF1E1B4B),
+borderRadius: BorderRadius.circular(16),
+),
+child: const Row(
+children: [
+Icon(Icons.auto_awesome, color: Colors.amber, size: 28),
+SizedBox(width: 12),
+Expanded(
+child: Text(
+"ប្រព័ន្ធសម្រាយរឿងប្តូរសំឡេងតួអង្គ ៧ ប្រភេទស្វ័យប្រវត្តិ (អ្នកសម្រាយ ក្មេងស្រី មនុស្សចាស់ បិសាច...)",
+style: TextStyle(fontSize: 12),
+),
+),
+],
+),
+),
+const SizedBox(height: 20),
+const Text("ចំណងជើងរឿង", style: TextStyle(fontWeight: FontWeight.bold)),
+const SizedBox(height: 8),
+TextField(
+controller: _titleController,
+decoration: InputDecoration(
+filled: true,
+fillColor: const Color(0xFF111827),
+border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+prefixIcon: const Icon(Icons.movie),
+),
+),
+const SizedBox(height: 20),
+const Text("តួអង្គទាំង ៧ ក្នុងរឿង", style: TextStyle(fontWeight: FontWeight.bold)),
+const SizedBox(height: 10),
+Wrap(
+spacing: 8,
+runSpacing: 8,
+children: _characters.map((char) {
+return Chip(
+avatar: Text(char["icon"]),
+label: Text(char["role"], style: const TextStyle(fontSize: 12)),
+backgroundColor: (char["color"] as Color).withOpacity(0.2),
+);
+}).toList(),
+),
+const SizedBox(height: 24),
+SizedBox(
+width: double.infinity,
+height: 52,
+child: ElevatedButton.icon(
+style: ElevatedButton.styleFrom(
+backgroundColor: Colors.indigoAccent,
+shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+),
+onPressed: () {
+ScaffoldMessenger.of(context).showSnackBar(
+SnackBar(content: Text("កំពុងដំណើរការផលិត៖ ${_titleController.text}")),
+);
+},
+icon: const Icon(Icons.play_arrow),
+label: const Text("🎭 ចាប់ផ្តើមផលិតសម្រាយរឿង ៧ សំឡេង", style: TextStyle(fontWeight: FontWeight.bold)),
+),
+),
+],
+),
+),
+);
+}
+}
+EOF
+- name: Build Android APK
+run: flutter build apk --release
+- name: Upload APK Release
+uses: softprops/action-gh-release@v2
+with:
+tag_name: v1.0.0-${{ github.run_number }}
+name: RecapCraft AI v1.0.0
+files: build/app/outputs/flutter-apk/app-release.apk
