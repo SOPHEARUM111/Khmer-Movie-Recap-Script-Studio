@@ -1,155 +1,54 @@
-name: Build WebView Studio APK
+name: Build Android APK (Capacitor)
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # អនុញ្ញាតឱ្យចុចប៊ូតុង Run Build ដោយដៃផ្ទាល់
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
-      - name: Setup Java 17
+      - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.x'
-          channel: 'stable'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Package Web into Flutter WebView
+      - name: Install Dependencies
         run: |
-          # 1. ពន្លា zip ប្រសិនបើមាន
-          if [ -f "khmer-movie-recap-script-studio.zip" ]; then
-            unzip -o khmer-movie-recap-script-studio.zip
-          fi
+          npm install
+          npm install @capacitor/core @capacitor/cli @capacitor/android
 
-          # 2. បង្កើតឯកសារ Web Production (កែសម្រួល base path ឱ្យស្គាល់ local asset)
-          npm install --legacy-peer-deps
-          npm run build || true
+      - name: Build Web Assets
+        run: npm run build
 
-          # 3. បង្កើតគម្រោង Flutter
-          flutter create --org com.recapcraft --project-name recapcraft_app app_runner
-          cd app_runner
+      - name: Add Capacitor Android Platform
+        run: |
+          npx cap init "RecapCraft Studio" "com.recapcraft.studio" --web-dir "dist" || true
+          npx cap add android || true
+          npx cap sync android
 
-          # បើកសិទ្ធិ Internet
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
+      - name: Build Android APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-          # 4. ចម្លងឯកសារ dist ចូលទៅក្នុង assets
-          mkdir -p assets/web
-          if [ -d "../dist" ]; then
-            cp -r ../dist/* assets/web/
-          else
-            cp ../index.html assets/web/
-          fi
-
-          # 5. រៀបចំ pubspec.yaml
-          cat << 'EOF' > pubspec.yaml
-          name: recapcraft_app
-          description: "Khmer Movie Recap Script Studio WebView"
-          publish_to: 'none'
-          version: 1.0.0+1
-
-          environment:
-            sdk: '>=3.0.0 <4.0.0'
-
-          dependencies:
-            flutter:
-              sdk: flutter
-            webview_flutter: ^4.8.0
-
-          flutter:
-            uses-material-design: true
-            assets:
-              - assets/web/
-              - assets/web/assets/
-          EOF
-
-          flutter pub get
-
-          # 6. កូដ Flutter ផ្ទុកឯកសារ WebView ក្នុងស្រុក
-          cat << 'END_DART' > lib/main.dart
-          import 'package:flutter/material.dart';
-          import 'package:webview_flutter/webview_flutter.dart';
-
-          void main() {
-            WidgetsFlutterBinding.ensureInitialized();
-            runApp(const MaterialApp(
-              debugShowCheckedModeBanner: false,
-              home: WebViewApp(),
-            ));
-          }
-
-          class WebViewApp extends StatefulWidget {
-            const WebViewApp({super.key});
-
-            @override
-            State<WebViewApp> createState() => _WebViewAppState();
-          }
-
-          class _WebViewAppState extends State<WebViewApp> {
-            late final WebViewController _controller;
-            bool _isLoading = true;
-
-            @override
-            void initState() {
-              super.initState();
-              _controller = WebViewController()
-                ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                ..setBackgroundColor(const Color(0xFF090D16))
-                ..setNavigationDelegate(
-                  NavigationDelegate(
-                    onPageFinished: (String url) {
-                      setState(() {
-                        _isLoading = false;
-                      });
-                    },
-                  ),
-                )
-                ..loadFlutterAsset('assets/web/index.html');
-            }
-
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(
-                backgroundColor: const Color(0xFF090D16),
-                body: SafeArea(
-                  child: Stack(
-                    children: [
-                      WebViewWidget(controller: _controller),
-                      if (_isLoading)
-                        const Center(
-                          child: CircularProgressIndicator(color: Color(0xFFF59E0B)),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }
-          }
-          END_DART
-
-          # 7. Build ចេញជា APK
-          flutter build apk --release
-          mkdir -p ../build_output
-          cp build/app/outputs/flutter-apk/app-release.apk ../build_output/
-
-      - name: Upload APK Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: v7.0.0-webview-${{ github.run_number }}
-          name: RecapCraft Studio WebView v7.0
-          files: build_output/app-release.apk
+          name: RecapCraft-Studio-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
