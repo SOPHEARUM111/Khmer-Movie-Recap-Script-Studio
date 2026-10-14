@@ -1,4 +1,4 @@
-name: Build Offline Studio APK
+name: Build Native Full Studio APK
 
 on:
   workflow_dispatch:
@@ -13,11 +13,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -30,128 +25,364 @@ jobs:
           flutter-version: '3.22.x'
           channel: 'stable'
 
-      - name: Build Web Dist and Flutter APK
+      - name: Build Full Native Mobile Studio
         run: |
-          # 1. ពន្លា zip គម្រោង
-          if [ -f "khmer-movie-recap-script-studio.zip" ]; then
-            unzip -o khmer-movie-recap-script-studio.zip
-          fi
+          flutter create --org com.recapcraft --project-name recapcraft_app studio_native_app
+          cd studio_native_app
+          flutter pub add cupertino_icons
 
-          # 2. ដំឡើងបណ្ណាល័យ Node និង Build Web production
-          npm install --legacy-peer-deps
-          npm run build || true
-
-          # 3. បង្កើតគម្រោង Flutter
-          flutter create --org com.recapcraft --project-name recapcraft_app app_runner
-          cd app_runner
-
-          # បើកសិទ្ធិ Internet
           sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
-          # 4. ចម្លងឯកសារ web ចូល assets
-          mkdir -p assets/web
-          if [ -d "../dist" ]; then
-            cp -r ../dist/* assets/web/
-          else
-            cp ../index.html assets/web/
-          fi
-
-          # កែសម្រួលផ្លូវ asset ក្នុង index.html ឱ្យដំណើរការស្រួលក្នុង WebView
-          sed -i 's|"/assets/|"assets/|g' assets/web/index.html 2>/dev/null || true
-          sed -i 's|"/|""|g' assets/web/index.html 2>/dev/null || true
-
-          # 5. បង្កើត pubspec.yaml ពេញលេញ និងត្រឹមត្រូវ 100% (គ្មានការស្ទួន key flutter: ទៀតឡើយ)
-          cat << 'EOF' > pubspec.yaml
-          name: recapcraft_app
-          description: "Khmer Movie Recap Script Studio"
-          publish_to: 'none'
-          version: 1.0.0+1
-
-          environment:
-            sdk: '>=3.0.0 <4.0.0'
-
-          dependencies:
-            flutter:
-              sdk: flutter
-            webview_flutter: ^4.8.0
-
-          dev_dependencies:
-            flutter_test:
-              sdk: flutter
-
-          flutter:
-            uses-material-design: true
-            assets:
-              - assets/web/
-              - assets/web/assets/
-          EOF
-
-          # 6. ដំឡើង dependencies តាម pubspec.yaml ថ្មី
-          flutter pub get
-
-          # 7. សរសេរកូដ Flutter WebView
-          cat << 'END_DART' > lib/main.dart
+          cat << 'EOF' > lib/main.dart
           import 'package:flutter/material.dart';
-          import 'package:webview_flutter/webview_flutter.dart';
 
           void main() {
-            WidgetsFlutterBinding.ensureInitialized();
-            runApp(const MaterialApp(
-              debugShowCheckedModeBanner: false,
-              home: StudioAppScreen(),
-            ));
+            runApp(const RecapStudioApp());
           }
 
-          class StudioAppScreen extends StatefulWidget {
-            const StudioAppScreen({super.key});
+          class RecapStudioApp extends StatelessWidget {
+            const RecapStudioApp({super.key});
 
             @override
-            State<StudioAppScreen> createState() => _StudioAppScreenState();
-          }
-
-          class _StudioAppScreenState extends State<StudioAppScreen> {
-            late final WebViewController _controller;
-            bool _isLoading = true;
-
-            @override
-            void initState() {
-              super.initState();
-              _controller = WebViewController()
-                ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                ..setBackgroundColor(const Color(0xFF090D16))
-                ..setNavigationDelegate(
-                  NavigationDelegate(
-                    onPageFinished: (String url) {
-                      setState(() {
-                        _isLoading = false;
-                      });
-                    },
-                  ),
-                )
-                ..loadFlutterAsset('assets/web/index.html');
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                title: 'Khmer Movie Recap Script Studio',
+                debugShowCheckedModeBanner: false,
+                theme: ThemeData.dark().copyWith(
+                  scaffoldBackgroundColor: const Color(0xFF030712),
+                  primaryColor: const Color(0xFFF59E0B),
+                ),
+                home: const StudioMainScreen(),
+              );
             }
+          }
+
+          class StudioMainScreen extends StatefulWidget {
+            const StudioMainScreen({super.key});
+
+            @override
+            State<StudioMainScreen> createState() => _StudioMainScreenState();
+          }
+
+          class _StudioMainScreenState extends State<StudioMainScreen> {
+            String _activeTab = 'Script';
+            double _fontSize = 22.0;
+
+            final List<Map<String, String>> _beats = [
+              {
+                'beat': '1',
+                'title': 'សារធាតុគីមីលេចធ្លាយ & ច្រកត្រួតពិនិត្យ',
+                'time': '00:00 - 03:15',
+                'scene': '[ឈុតឆាក]: ប្លង់កាមេរ៉ាបង្ហាញពីផ្លូវលំជនបទស្ងាត់ជ្រងំជិតក្រុងប៊ីសាន។ មានប៉ុស្តិ៍ត្រួតពិនិត្យចត្តាឡីស័ក (Quarantine Checkpoint) ដែលទាហាន និងមន្ត្រីពាក់ឧបករណ៍ការពារជាតិគីមីកំពុងបាញ់ថ្នាំសម្លាប់មេរោគលើរថយន្តគ្រប់គ្រឿង។',
+                'audio': '[សំឡេងបន្លឺ]: សំឡេងកកិតហ្វ្រាំងរថយន្ត និងសំឡេងម៉ាស៊ីនបាញ់ថ្នាំគីមីបន្លឺឡើងខ្សាវៗ',
+                'narration': 'រឿងរ៉ាវបានចាប់ផ្ដើមឡើងនៅពេលដែលរថយន្តដឹកទំនិញមួយគ្រឿងបានបើកកាត់ប៉ុស្តិ៍ត្រួតពិនិត្យ... គ្មាននរណាម្នាក់ដឹងទេថាសោកនាដកម្មដ៏រន្ធត់កំពុងតែរង់ចាំពួកគេ...',
+                'emotion': '[អារម្មណ៍តួអង្គ]: តានតឹង សង្ស័យ ភ័យខ្លាច',
+              },
+              {
+                'beat': '2',
+                'title': 'ការឡើងជិះរថភ្លើង KTX ទៅកាន់ប៊ូសាន',
+                'time': '03:15 - 08:30',
+                'scene': '[ឈុតឆាក]: ស្ថានីយរថភ្លើងក្រុងសេអ៊ូលដ៏អ៊ូអរ។ មនុស្សម្នាជាច្រើនកំពុងប្រញាប់ប្រញាល់ឡើងរថភ្លើង KTX ល្បឿនលឿន។',
+                'audio': '[សំឡេងបន្លឺ]: សំឡេងឧគ្ឃោសនសព្ទស្ថានីយ និងសំឡេងស៊ីផ្លេរថភ្លើងបន្លឺឡើង',
+                'narration': 'ស៊ុកវូ និងកូនស្រីតូច ស៊ូអាន បានឡើងលើរថភ្លើងដោយសុវត្ថិភាព ប៉ុន្តែនៅវិនាទីចុងក្រោយ ស្រមោលនារីម្នាក់ដែលមានស្នាមរបួសជើងបានលបចូលតាមទ្វារទូរថភ្លើង...',
+                'emotion': '[អារម្មណ៍តួអង្គ]: ស្ងប់ស្ងាត់មុនព្យុះសង្ឃរា',
+              },
+            ];
+
+            final List<Map<String, String>> _sfxItems = [
+              {'name': 'បាសបន្លឺធ្ងន់', 'cue': 'Sub Bass Boom', 'desc': 'សម្រាប់ឈុតឆាករបត់សំខាន់'},
+              {'name': 'បេះដូងលោត', 'cue': 'Heartbeat', 'desc': 'ឈុតឆាកតានតឹងភ័យខ្លាច'},
+              {'name': 'សំឡេងតានតឹង', 'cue': 'Tension Riser', 'desc': 'កើនកម្ដៅមុនគ្រោះថ្នាក់'},
+              {'name': 'កន្ត្រាក់អារម្មណ៍', 'cue': 'Jump Scare', 'desc': 'ខ្មោចឆៅលេចឡើងភ្លាមៗ'},
+              {'name': 'បរិយាកាសព្រឺរោម', 'cue': 'Eerie Drone', 'desc': 'សូរសំឡេងអាថ៌កំបាំង'},
+              {'name': 'ទះទ្វារ / ដែកកកិត', 'cue': 'Metal Impact', 'desc': 'ទ្វាររថភ្លើងបិទគាំង'},
+            ];
 
             @override
             Widget build(BuildContext context) {
               return Scaffold(
-                backgroundColor: const Color(0xFF090D16),
-                body: SafeArea(
-                  child: Stack(
-                    children: [
-                      WebViewWidget(controller: _controller),
-                      if (_isLoading)
-                        const Center(
-                          child: CircularProgressIndicator(color: Color(0xFFF59E0B)),
+                appBar: PreferredSize(
+                  preferredSize: const Size.fromHeight(105),
+                  child: AppBar(
+                    backgroundColor: const Color(0xFF0F172A),
+                    elevation: 1,
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'MOVIE RECAP STUDIO • ស្ទូឌីយោសម្រាយរឿងខ្មែរ',
+                          style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold),
                         ),
+                        Text(
+                          'Train to Busan (រថភ្លើងទៅកាន់ប៊ូសាន)',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    bottom: PreferredSize(
+                      preferredSize: const Size.fromHeight(50),
+                      child: Container(
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _buildTabButton('Script', Icons.layers, const Color(0xFFF59E0B), Colors.black),
+                            _buildTabButton('អាន', Icons.tv, Colors.grey[800]!, Colors.white70),
+                            _buildTabButton('App', Icons.smartphone, Colors.grey[800]!, const Color(0xFF22D3EE)),
+                            _buildTabButton('SFX', Icons.music_note, Colors.grey[800]!, Colors.white70),
+                            _buildTabButton('នាំចេញ', Icons.download, Colors.grey[800]!, Colors.white70),
+                            _buildTabButton('Clone', Icons.mic, const Color(0xFF581C87), const Color(0xFFD8B4FE)),
+                            _buildTabButton('Edge TTS', Icons.record_voice_over, const Color(0xFF064E3B), const Color(0xFF34D399)),
+                            _buildTabButton('ថ្មី', Icons.auto_awesome, const Color(0xFFF43F5E), Colors.white),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                body: _buildCurrentView(),
+              );
+            }
+
+            Widget _buildTabButton(String label, IconData icon, Color bgColor, Color textColor) {
+              final bool isSelected = _activeTab == label;
+              return Container(
+                margin: const EdgeInsets.only(right: 6),
+                child: ElevatedButton.icon(
+                  icon: Icon(icon, size: 14, color: isSelected ? Colors.black : textColor),
+                  label: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSelected ? Colors.black : textColor)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSelected ? const Color(0xFFF59E0B) : bgColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _activeTab = label;
+                    });
+                  },
+                ),
+              );
+            }
+
+            Widget _buildCurrentView() {
+              if (_activeTab == 'អាន') {
+                return _buildTeleprompterView();
+              } else if (_activeTab == 'SFX') {
+                return _buildSoundboardView();
+              } else {
+                return _buildScriptEditorView();
+              }
+            }
+
+            Widget _buildScriptEditorView() {
+              return ListView(
+                padding: const EdgeInsets.all(14),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'ភ័យរន្ធត់ / ខ្មោចឆៅ / មនោសញ្ចេតនា (ZOMBIE THRILLER)',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Train to Busan - រឿងពេញ Master Edition (00:00 - 90:00)',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Script សម្រាយរឿងពេញលេញ Beat-by-Beat លម្អិតឈុតឆាកម្ដងមួយៗ និងបច្ចេកទេសកាត់ត។',
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.tv, size: 16, color: Colors.black),
+                          label: const Text('បើកផ្ទាំងអាន Teleprompter', style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+                          onPressed: () => setState(() => _activeTab = 'អាន'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B1329),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Wrap(
+                      spacing: 8,
+                      children: const [
+                        Chip(backgroundColor: Color(0xFF083344), label: Text('[ឈុតឆាក]: រូបភាព/ប្លង់', style: TextStyle(color: Color(0xFF22D3EE), fontSize: 10))),
+                        Chip(backgroundColor: Color(0xFF451A03), label: Text('[សំឡេងបន្លឺ]: SFX/ភ្លេង', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 10))),
+                        Chip(backgroundColor: Color(0xFF064E3B), label: Text('[ពន្យល់សាច់រឿង]: ពាក្យអាន', style: TextStyle(color: Color(0xFF34D399), fontSize: 10))),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ..._beats.map((b) => _buildBeatCard(b)).toList(),
+                ],
+              );
+            }
+
+            Widget _buildBeatCard(Map<String, String> b) {
+              return Card(
+                color: const Color(0xFF0F172A),
+                margin: const EdgeInsets.only(bottom: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 12,
+                                backgroundColor: const Color(0xFFF59E0B),
+                                child: Text(b['beat']!, style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(b['title']!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+                            ],
+                          ),
+                          Text(b['time']!, style: const TextStyle(color: Colors.amber, fontSize: 11, fontFamily: 'monospace')),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: const Color(0xFF020617), borderRadius: BorderRadius.circular(8)),
+                        child: Text(b['scene']!, style: const TextStyle(color: Color(0xFF22D3EE), fontSize: 11)),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: const Color(0xFF020617), borderRadius: BorderRadius.circular(8)),
+                        child: Text(b['audio']!, style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 11)),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: const Color(0xFF064E3B).withOpacity(0.3), borderRadius: BorderRadius.circular(10)),
+                        child: Text(b['narration']!, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5)),
+                      ),
                     ],
                   ),
                 ),
               );
             }
-          }
-          END_DART
 
-          # 8. Build ចេញជាឯកសារ APK
+            Widget _buildTeleprompterView() {
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Text('ទំហំអក្សរ:', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                        Expanded(
+                          child: Slider(
+                            value: _fontSize,
+                            min: 16,
+                            max: 38,
+                            activeColor: const Color(0xFFF59E0B),
+                            onChanged: (val) => setState(() => _fontSize = val),
+                          ),
+                        ),
+                        Text('${_fontSize.toInt()}px', style: const TextStyle(color: Color(0xFFF59E0B))),
+                      ],
+                    ),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF020617),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white12),
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: _beats.map((b) => Padding(
+                              padding: const EdgeInsets.only(bottom: 24),
+                              child: Text(
+                                b['narration']!,
+                                style: TextStyle(fontSize: _fontSize, color: Colors.white, height: 1.9, fontWeight: FontWeight.w500),
+                              ),
+                            )).toList(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            Widget _buildSoundboardView() {
+              return GridView.builder(
+                padding: const EdgeInsets.all(14),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 1.25,
+                ),
+                itemCount: _sfxItems.length,
+                itemBuilder: (context, idx) {
+                  final s = _sfxItems[idx];
+                  return InkWell(
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('ចាក់សំឡេង៖ ${s['name']} (${s['cue']})'), duration: const Duration(milliseconds: 600)),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.amber.withOpacity(0.2)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.graphic_eq, color: Color(0xFFF59E0B), size: 26),
+                          const SizedBox(height: 6),
+                          Text(s['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          Text(s['cue']!, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            }
+          }
+          EOF
+
           flutter build apk --release
           mkdir -p ../build_output
           cp build/app/outputs/flutter-apk/app-release.apk ../build_output/
@@ -159,6 +390,7 @@ jobs:
       - name: Upload APK Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.4.0-studio-${{ github.run_number }}
-          name: RecapCraft Full Studio v4.4
+          tag_name: v5.0.0-native-${{ github.run_number }}
+          name: RecapCraft Native Studio v5.0
           files: build_output/app-release.apk
+          
