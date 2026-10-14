@@ -30,13 +30,14 @@ jobs:
           flutter-version: '3.22.x'
           channel: 'stable'
 
-      - name: Build Web Assets & Package Flutter APK
+      - name: Extract Project & Package Flutter APK
         run: |
-          # 1. ដំឡើងបណ្ណាល័យ និង Build ផ្នែក Web (HTML/CSS/JS)
-          npm install
-          npm run build || mkdir -p dist && cp index.html dist/
+          # 1. ពន្លាឯកសារ zip បើមានក្នុង repository
+          if [ -f "khmer-movie-recap-script-studio.zip" ]; then
+            unzip -o khmer-movie-recap-script-studio.zip
+          fi
 
-          # 2. បង្កើតគម្រោង Flutter App ដែលមាន WebView សម្រាប់បង្ហាញ Web Studio ទាំងមូល
+          # 2. បង្កើតគម្រោង Flutter App ដែលមាន WebView
           flutter create --org com.recapcraft --project-name recapcraft_app mobile_app
           cd mobile_app
           flutter pub add webview_flutter
@@ -44,7 +45,7 @@ jobs:
           # បើកសិទ្ធិ Internet លើ Android
           sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
-          # 3. សរសេរកូដ WebView ដើម្បីដំណើរការ Studio ពេញលេញលើទូរស័ព្ទ
+          # 3. សរសេរកូដ WebView សម្រាប់ដំណើរការផ្ទាំង Web Studio ពេញលេញលើទូរស័ព្ទ
           cat << 'EOF' > lib/main.dart
           import 'package:flutter/material.dart';
           import 'package:webview_flutter/webview_flutter.dart';
@@ -125,7 +126,7 @@ jobs:
       - name: Upload APK Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.0.0-full-studio-${{ github.run_number }}
-          name: Khmer Movie Recap Studio v3.0
+          tag_name: v3.1.0-studio-${{ github.run_number }}
+          name: Khmer Movie Recap Studio v3.1
           files: build_output/app-release.apk
           
