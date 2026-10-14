@@ -3,7 +3,7 @@ name: Build Android APK (Capacitor)
 on:
   push:
     branches: [ "main", "master" ]
-  workflow_dispatch: # អនុញ្ញាតឱ្យចុចប៊ូតុង Run Build ដោយដៃផ្ទាល់
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,34 +16,40 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Dependencies
+      - name: Locate Project Root & Install
         run: |
-          npm install
+          # ប្រសិនបើ package.json ស្ថិតក្នុង Folder រង វានឹងរំកិលចូលដោយស្វ័យប្រវត្តិ
+          if [ ! -f "package.json" ]; then
+            SUBDIR=$(find . -maxdepth 2 -name "package.json" -exec dirname {} \;)
+            if [ -n "$SUBDIR" ]; then
+              echo "Moving to $SUBDIR"
+              cd "$SUBDIR"
+            fi
+          fi
+          
+          npm install --legacy-peer-deps
           npm install @capacitor/core @capacitor/cli @capacitor/android
-
-      - name: Build Web Assets
-        run: npm run build
-
-      - name: Add Capacitor Android Platform
-        run: |
+          npm run build
+          
           npx cap init "RecapCraft Studio" "com.recapcraft.studio" --web-dir "dist" || true
           npx cap add android || true
           npx cap sync android
 
       - name: Build Android APK
         run: |
-          cd android
+          ANDROID_DIR=$(find . -type d -name "android" | head -n 1)
+          cd "$ANDROID_DIR"
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -51,4 +57,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RecapCraft-Studio-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: "**/app-debug.apk"
+          
