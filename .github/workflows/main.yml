@@ -13,6 +13,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -25,30 +30,43 @@ jobs:
           flutter-version: '3.22.x'
           channel: 'stable'
 
-      - name: Bundle Web Assets into Flutter App
+      - name: Build Web Dist and Flutter APK
         run: |
-          # 1. ពន្លាឯកសារគម្រោង Studio
+          # 1. ពន្លា zip ប្រសិនបើមាន
           if [ -f "khmer-movie-recap-script-studio.zip" ]; then
             unzip -o khmer-movie-recap-script-studio.zip
           fi
 
-          # 2. បង្កើតគម្រោង Flutter ថ្មី
-          flutter create --org com.recapcraft --project-name recapcraft_app studio_offline_app
-          cd studio_offline_app
+          # 2. បង្កើតឯកសារ web production build (HTML/CSS/JS)
+          npm install
+          npm run build || true
+
+          # 3. បង្កើតគម្រោង Flutter
+          flutter create --org com.recapcraft --project-name recapcraft_app app_runner
+          cd app_runner
           flutter pub add webview_flutter
-
-          # 3. បញ្ចូលឯកសារ Web ទៅក្នុង Assets របស់ App
-          mkdir -p assets/web
-          cp -r ../src assets/web/ 2>/dev/null || true
-          cp ../index.html assets/web/ 2>/dev/null || true
-
-          # 4. កំណត់ pubspec.yaml ដើម្បីទទួលស្គាល់ Folder assets
-          sed -i '/flutter:/a \  assets:\n    - assets/web/\n    - assets/web/src/' pubspec.yaml
 
           # បើកសិទ្ធិ Internet
           sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
-          # 5. សរសេរកូដ Flutter ដើម្បីដំណើរការឯកសារ Studio ផ្ទាល់ក្នុងទូរស័ព្ទ
+          # 4. ចម្លងឯកសារ dist ចូល assets
+          mkdir -p assets/web
+          if [ -d "../dist" ]; then
+            cp -r ../dist/* assets/web/
+          else
+            cp ../index.html assets/web/
+          fi
+
+          # 5. បញ្ចូលការកំណត់ assets ទៅក្នុង pubspec.yaml យ៉ាងត្រឹមត្រូវ
+          cat << 'EOF' >> pubspec.yaml
+
+flutter:
+  assets:
+    - assets/web/
+    - assets/web/assets/
+EOF
+
+          # 6. សរសេរកូដ Flutter WebView
           cat << 'EOF' > lib/main.dart
           import 'package:flutter/material.dart';
           import 'package:webview_flutter/webview_flutter.dart';
@@ -121,7 +139,7 @@ jobs:
           }
           EOF
 
-          # 6. Build ចេញជាឯកសារ APK
+          # 7. Build APK
           flutter build apk --release
           mkdir -p ../build_output
           cp build/app/outputs/flutter-apk/app-release.apk ../build_output/
@@ -129,7 +147,7 @@ jobs:
       - name: Upload APK Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.0.0-offline-${{ github.run_number }}
-          name: RecapCraft Studio Offline v4.0
+          tag_name: v4.1.0-offline-${{ github.run_number }}
+          name: RecapCraft Studio Offline v4.1
           files: build_output/app-release.apk
           
