@@ -32,24 +32,19 @@ jobs:
 
       - name: Build Web Dist and Flutter APK
         run: |
-          # 1. ពន្លា zip ប្រសិនបើមាន
           if [ -f "khmer-movie-recap-script-studio.zip" ]; then
             unzip -o khmer-movie-recap-script-studio.zip
           fi
 
-          # 2. បង្កើតឯកសារ web production build (HTML/CSS/JS)
           npm install
           npm run build || true
 
-          # 3. បង្កើតគម្រោង Flutter
           flutter create --org com.recapcraft --project-name recapcraft_app app_runner
           cd app_runner
           flutter pub add webview_flutter
 
-          # បើកសិទ្ធិ Internet
           sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
-          # 4. ចម្លងឯកសារ dist ចូល assets
           mkdir -p assets/web
           if [ -d "../dist" ]; then
             cp -r ../dist/* assets/web/
@@ -57,47 +52,28 @@ jobs:
             cp ../index.html assets/web/
           fi
 
-          # 5. បញ្ចូលការកំណត់ assets ទៅក្នុង pubspec.yaml យ៉ាងត្រឹមត្រូវ
-          cat << 'EOF' >> pubspec.yaml
+          printf "\nflutter:\n  assets:\n    - assets/web/\n    - assets/web/assets/\n" >> pubspec.yaml
 
-flutter:
-  assets:
-    - assets/web/
-    - assets/web/assets/
-EOF
-
-          # 6. សរសេរកូដ Flutter WebView
-          cat << 'EOF' > lib/main.dart
+          cat << 'END_DART' > lib/main.dart
           import 'package:flutter/material.dart';
           import 'package:webview_flutter/webview_flutter.dart';
 
           void main() {
             WidgetsFlutterBinding.ensureInitialized();
-            runApp(const OfflineStudioApp());
+            runApp(const MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: StudioAppScreen(),
+            ));
           }
 
-          class OfflineStudioApp extends StatelessWidget {
-            const OfflineStudioApp({super.key});
+          class StudioAppScreen extends StatefulWidget {
+            const StudioAppScreen({super.key});
 
             @override
-            Widget build(BuildContext context) {
-              return MaterialApp(
-                title: 'Khmer Movie Recap Script Studio',
-                debugShowCheckedModeBanner: false,
-                theme: ThemeData.dark(),
-                home: const StudioScreen(),
-              );
-            }
+            State<StudioAppScreen> createState() => _StudioAppScreenState();
           }
 
-          class StudioScreen extends StatefulWidget {
-            const StudioScreen({super.key});
-
-            @override
-            State<StudioScreen> createState() => _StudioScreenState();
-          }
-
-          class _StudioScreenState extends State<StudioScreen> {
+          class _StudioAppScreenState extends State<StudioAppScreen> {
             late final WebViewController _controller;
             bool _isLoading = true;
 
@@ -137,9 +113,8 @@ EOF
               );
             }
           }
-          EOF
+          END_DART
 
-          # 7. Build APK
           flutter build apk --release
           mkdir -p ../build_output
           cp build/app/outputs/flutter-apk/app-release.apk ../build_output/
@@ -147,7 +122,7 @@ EOF
       - name: Upload APK Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.1.0-offline-${{ github.run_number }}
-          name: RecapCraft Studio Offline v4.1
+          tag_name: v4.2.0-offline-${{ github.run_number }}
+          name: RecapCraft Studio Offline v4.2
           files: build_output/app-release.apk
-
+          
