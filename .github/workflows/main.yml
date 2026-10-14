@@ -1,154 +1,492 @@
-name: Build and Release APK
-
+name: Build Full RecapCraft Studio APK
 on:
-  workflow_dispatch:
-
+workflow_dispatch:
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-
-      - name: Clean & Prepare Project
-        run: |
-          mkdir -p build_temp
-          cd build_temp
-          flutter create --org com.recapcraft --project-name recapcraft_app .
-          flutter pub add http cupertino_icons
-          
-          # បើកសិទ្ធិ Internet ក្នុង AndroidManifest.xml
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' android/app/src/main/AndroidManifest.xml || true
-          
-          # បិទភ្ជាប់កូដ App ចូលក្នុង main.dart ដោយកែសម្រួលរួចជាស្រេច
-          cat << 'EOF' > lib/main.dart
-          import 'dart:async';
-          import 'dart:convert';
-          import 'package:flutter/material.dart';
-          import 'package:http/http.dart' as http;
-
-          const String kBackendBaseUrl = "http://10.0.2.2:8000";
-
-          void main() {
-            runApp(const MovieRecapApp());
-          }
-
-          class MovieRecapApp extends StatelessWidget {
-            const MovieRecapApp({super.key});
-
-            @override
-            Widget build(BuildContext context) {
-              return MaterialApp(
-                title: 'RecapCraft AI 7-Voice Studio',
-                debugShowCheckedModeBanner: false,
-                theme: ThemeData.dark().copyWith(
-                  scaffoldBackgroundColor: const Color(0xFF07090E),
-                  primaryColor: const Color(0xFFE11D48),
-                ),
-                home: const HomeScreen(),
-              );
-            }
-          }
-
-          class HomeScreen extends StatefulWidget {
-            const HomeScreen({super.key});
-
-            @override
-            State<HomeScreen> createState() => _HomeScreenState();
-          }
-
-          class _HomeScreenState extends State<HomeScreen> {
-            final TextEditingController _titleController = TextEditingController(text: "Train to Busan");
-            int _selectedDuration = 90;
-            bool _includeMonster = true;
-
-            final List<Map<String, dynamic>> _characters = [
-              {"role": "អ្នកសម្រាយ", "icon": "🎙️", "color": Colors.indigo},
-              {"role": "ក្មេងប្រុស", "icon": "👦", "color": Colors.blue},
-              {"role": "ក្មេងស្រី", "icon": "👧", "color": Colors.pink},
-              {"role": "មនុស្សប្រុស", "icon": "👨", "color": Colors.cyan},
-              {"role": "មនុស្សស្រី", "icon": "👩", "color": Colors.teal}, // កែពី emerald មក teal
-              {"role": "មនុស្សចាស់", "icon": "👴", "color": Colors.amber},
-              {"role": "បិសាច", "icon": "👹", "color": Colors.red},
-            ];
-
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(
-                appBar: AppBar(
-                  backgroundColor: const Color(0xFF0F172A),
-                  title: const Text("RecapCraft AI 7-Voice Studio", style: TextStyle(fontSize: 16)),
-                ),
-                body: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        controller: _titleController,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFF111827),
-                          hintText: "ចំណងជើងរឿង (Movie Title)",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        children: _characters.map((char) {
-                          return Chip(
-                            avatar: Text(char["icon"]),
-                            label: Text(char["role"]),
-                            backgroundColor: (char["color"] as MaterialColor).withOpacity(0.2),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigoAccent,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("ប្រព័ន្ធរួចរាល់សម្រាប់ការផលិត!")),
-                          );
-                        },
-                        child: const Text("🎭 ផលិតសម្រាយរឿង ៧ សំឡេងតួ", style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-          }
-          EOF
-
-      - name: Build Android APK
-        run: |
-          cd build_temp
-          flutter build apk --release
-
-      - name: Upload APK Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0-${{ github.run_number }}
-          name: RecapCraft AI v1.0.0 (Build #${{ github.run_number }})
-          files: build_temp/build/app/outputs/flutter-apk/app-release.apk
-          
+build:
+runs-on: ubuntu-latest
+permissions:
+contents: write
+steps:
+- name: Checkout Code
+uses: actions/checkout@v4
+- name: Setup Java 17
+uses: actions/setup-java@v4
+with:
+distribution: 'temurin'
+java-version: '17'
+- name: Setup Flutter
+uses: subosito/flutter-action@v2
+with:
+channel: 'stable'
+- name: Prepare Full Standalone App
+run: |
+mkdir -p build_temp
+cd build_temp
+flutter create --org com.recapcraft --project-name recapcraft_app .
+flutter pub add http cupertino_icons
+# បើកសិទ្ធិ Internet
+sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' android/app/src/main/AndroidManifest.xml || true
+# បង្កើតកូដ App ពេញលេញ 100% ក្នុង lib/main.dart
+cat << 'EOF' > lib/main.dart
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+void main() {
+WidgetsFlutterBinding.ensureInitialized();
+runApp(const FullRecapApp());
+}
+class FullRecapApp extends StatelessWidget {
+const FullRecapApp({super.key});
+@override
+Widget build(BuildContext context) {
+return MaterialApp(
+title: 'RecapCraft AI 7-Voice Studio',
+debugShowCheckedModeBanner: false,
+theme: ThemeData.dark().copyWith(
+scaffoldBackgroundColor: const Color(0xFF07090E),
+primaryColor: const Color(0xFFE11D48),
+colorScheme: const ColorScheme.dark(
+primary: Color(0xFF6366F1),
+secondary: Color(0xFFE11D48),
+surface: Color(0xFF0F172A),
+),
+),
+home: const MainStudioScreen(),
+);
+}
+}
+class MainStudioScreen extends StatefulWidget {
+const MainStudioScreen({super.key});
+@override
+State<MainStudioScreen> createState() => _MainStudioScreenState();
+}
+class _MainStudioScreenState extends State<MainStudioScreen> with SingleTickerProviderStateMixin {
+late TabController _tabController;
+final TextEditingController _titleController = TextEditingController(text: "បិសាចជញ្ជក់ឈាម (Vampire Nightmare)");
+final TextEditingController _scriptController = TextEditingController();
+final TextEditingController _apiKeyController = TextEditingController();
+int _selectedDuration = 90;
+bool _isLoading = false;
+int _activeSegmentIndex = 0;
+bool _isPlaying = false;
+Timer? _playTimer;
+final List<Map<String, dynamic>> _characters = [
+{"role": "អ្នកសម្រាយ", "icon": "🎙️", "color": Colors.indigo, "pitch": "1.0", "rate": "ល្មម"},
+{"role": "ក្មេងប្រុស", "icon": "👦", "color": Colors.blue, "pitch": "1.35", "rate": "រហ័ស"},
+{"role": "ក្មេងស្រី", "icon": "👧", "color": Colors.pink, "pitch": "1.70", "rate": "ស្រទន់"},
+{"role": "មនុស្សប្រុស", "icon": "👨", "color": Colors.cyan, "pitch": "0.95", "rate": "រឹងមាំ"},
+{"role": "មនុស្សស្រី", "icon": "👩", "color": Colors.teal, "pitch": "1.15", "rate": "ភ័យខ្លាច"},
+{"role": "មនុស្សចាស់", "icon": "👴", "color": Colors.amber, "pitch": "0.65", "rate": "យឺតៗ"},
+{"role": "បិសាច", "icon": "👹", "color": Colors.red, "pitch": "0.35", "rate": "គ្រល័រធ្ងន់"},
+];
+List<Map<String, String>> _parsedSegments = [];
+@override
+void initState() {
+super.initState();
+_tabController = TabController(length: 4, vsync: this);
+_loadPresetStory("vampire");
+}
+void _loadPresetStory(String type) {
+if (type == "vampire") {
+_titleController.text = "បិសាចជញ្ជក់ឈាម (Vampire Nightmare)";
+_scriptController.text = """[អ្នកសម្រាយ] នៅកណ្តាលរាត្រីដ៏ងងឹតសូន្យសុង វិមានបុរាណមួយបានបន្លឺសន្ធឹកខ្យល់បោកបក់គួរឱ្យព្រឺក្បាល។
+[ក្មេងស្រី] ប៉ា! ហេតុអីបានជាស្រមោលនៅក្រៅបង្អួចនោះមានធ្មេញស្រួចវែងអ៊ីចឹងប៉ា? កូនខ្លាចណាស់!
+[មនុស្សប្រុស] កុំភ័យកូនស្រី! មកឈរក្រោយខ្នងប៉ាឱ្យជាប់ ប៉ាមិនឱ្យវាធ្វើបាបកូនឡើយ!
+[មនុស្សចាស់] លោកអើយលោក! អាថ៌កំបាំងបិសាចក្រេបឈាមដែលកប់ចោល ១០០ ឆ្នាំមុន បានភ្ញាក់ឡើងវិញហើយ!
+[បិសាច] ហាហាហា... ឈាមស្រស់ៗ! គ្មាននរណាម្នាក់អាចចាកចេញពីវិមាននេះទាំងមានជីវិតឡើយ!
+[មនុស្សស្រី] បង! ជួយកូនយើងផង! វាកំពុងទម្លុះទ្វារចូលមកដល់ហើយ!
+[ក្មេងប្រុស] បងប្រុស! ខ្ញុំឃើញដំបងឈើ និងភ្លើងទៀននៅទីនោះ ដុតវាទៅ!
+[អ្នកសម្រាយ] ការប្រយុទ្ធដើម្បីរស់រានមានជីវិតបានចាប់ផ្តើមឡើង ចំកណ្តាលពិភពងងឹតដែលគ្មានសេចក្តីមេត្តា។""";
+} else {
+_titleController.text = "Train to Busan (រថភ្លើងទៅកាន់ប៊ូសាន)";
+_scriptController.text = """[អ្នកសម្រាយ] រថភ្លើងល្បឿនលឿនឆ្ពោះទៅកាន់ទីក្រុងប៊ូសាន បានចាប់ផ្តើមលូនចេញពីស្ថានីយក្នុងភាពស្ងប់ស្ងាត់។
+[ក្មេងស្រី] ប៉ា! ហេតុអីបានជាមនុស្សនៅខាងក្រៅនោះរត់ដេញខាំគ្នាអ៊ីចឹង?
+[មនុស្សប្រុស] Su-an កុំមើល! មកក្បែរប៉ា!
+[បិសាច] ក្រោកឡើង... គ្មានផ្លូវរត់គេចទៀតទេ!
+[អ្នកសម្រាយ] មហន្តរាយខ្មោចឆៅបានផ្ទុះឡើងពេញទូរថភ្លើងភ្លាមៗ។""";
+}
+_parseScript();
+}
+void _parseScript() {
+final lines = _scriptController.text.split('\n');
+_parsedSegments.clear();
+for (var line in lines) {
+final trimmed = line.trim();
+if (trimmed.isEmpty) continue;
+final match = RegExp(r"^[(.?)]\s(.*)$").firstMatch(trimmed);
+if (match != null) {
+_parsedSegments.add({"role": match.group(1)!, "text": match.group(2)!});
+} else {
+_parsedSegments.add({"role": "អ្នកសម្រាយ", "text": trimmed});
+}
+}
+setState(() {});
+}
+void _insertTag(String role) {
+final text = _scriptController.text;
+final selection = _scriptController.selection;
+final newTag = "[role] ";
+if (selection.isValid && selection.start >= 0) {
+final start = selection.start;
+final end = selection.end;
+_scriptController.text = text.replaceRange(start, end, "\nnewTag");
+} else {
+_scriptController.text = "text\nnewTag";
+}
+_parseScript();
+}
+Future<void> _generateStoryWithAI() async {
+final title = _titleController.text.trim();
+if (title.isEmpty) return;
+setState(() => _isLoading = true);
+final apiKey = _apiKeyController.text.trim();
+if (apiKey.isNotEmpty) {
+try {
+final response = await http.post(
+Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey"),
+headers: {"Content-Type": "application/json"},
+body: jsonEncode({
+"contents": [{
+"parts": [{
+"text": "អ្នកជាអ្នកសម្រាយរឿងខ្មែរអាជីព។ សូមសរសេរ Script សម្រាយរឿង '$title' ប្រវែង 800 ពាក្យ ដោយបែងចែកស្លាក [អ្នកសម្រាយ], [ក្មេងប្រុស], [ក្មេងស្រី], [មនុស្សប្រុស], [មនុស្សស្រី], [មនុស្សចាស់], [បិសាច] នៅខាងដើមបន្ទាត់នីមួយៗឱ្យបានជក់ចិត្ត។"
+}]
+}]
+}),
+);
+if (response.statusCode == 200) {
+final data = jsonDecode(response.body);
+final text = data["candidates"][0]["content"]["parts"][0]["text"];
+_scriptController.text = text;
+_parseScript();
+ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("🎉 Gemini AI បានតែងសាច់រឿងជោគជ័យ!")));
+setState(() => _isLoading = false);
+return;
+}
+} catch (e) {
+// Fallback to local template generator
+}
+}
+// Local Offline Smart Generator
+await Future.delayed(const Duration(seconds: 2));
+_scriptController.text = """[អ្នកសម្រាយ] ដំណើររឿង '$title' គឺជាសាច់រឿងដែលរំជួលចិត្ត និងភ័យរន្ធត់បំផុត។
+[មនុស្សប្រុស] ឈប់សិន! អ្នកទាំងអស់គ្នាស្តាប់ឮសំឡេងអ្វីនៅពីក្រោយជញ្ជាំងទេ?
+[ក្មេងស្រី] ខ្ញុំខ្លាចណាស់... វាហាក់ដូចជាកំពុងសម្លឹងមើលមកពួកយើង!
+[មនុស្សចាស់] កុំធ្វើឱ្យមានសំឡេងឱ្យសោះ! ប្រសិនបើវាដឹងខ្លួន គ្មាននរណាម្នាក់រួចជីវិតឡើយ!
+[បិសាច] ហាហាហា! ទីបំផុតពួកឯងរកផ្លូវចូលមកដល់ជម្រករបស់ខ្ញុំហើយ!
+[មនុស្សស្រី] រត់ទៅ! កុំនៅទីនេះ! ជួយកូនខ្ញុំផង!
+[ក្មេងប្រុស] ខ្ញុំមិនចុះចាញ់ទេ! ពួកយើងត្រូវតែរួមដៃគ្នាប្រយុទ្ធ!
+[អ្នកសម្រាយ] ភាពក្លាហាន និងការលះបង់ បានក្លាយជាអាវុធតែមួយគត់ដើម្បីយកឈ្នះលើមហន្តរាយនេះ។""";
+_parseScript();
+setState(() => _isLoading = false);
+ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("🎉 បានបង្កើតសាច់រឿង ៧ តួអង្គស្វ័យប្រវត្តិ!")));
+}
+void _togglePlayback() {
+if (_isPlaying) {
+_playTimer?.cancel();
+setState(() => _isPlaying = false);
+} else {
+if (_parsedSegments.isEmpty) _parseScript();
+if (_parsedSegments.isEmpty) return;
+setState(() {
+_isPlaying = true;
+_activeSegmentIndex = 0;
+});
+_playTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+if (_activeSegmentIndex < _parsedSegments.length - 1) {
+setState(() => _activeSegmentIndex++);
+} else {
+timer.cancel();
+setState(() => _isPlaying = false);
+ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("🎉 បានចាក់អានចប់សព្វគ្រប់!")));
+}
+});
+}
+}
+@override
+void dispose() {
+_playTimer?.cancel();
+_tabController.dispose();
+super.dispose();
+}
+@override
+Widget build(BuildContext context) {
+return Scaffold(
+appBar: AppBar(
+backgroundColor: const Color(0xFF0F172A),
+elevation: 0,
+title: const Row(
+children: [
+Text("🎭 ", style: TextStyle(fontSize: 18)),
+Text("RecapCraft AI Studio", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+],
+),
+bottom: TabBar(
+controller: _tabController,
+isScrollable: true,
+indicatorColor: Colors.roseAccent,
+tabs: const [
+Tab(text: "ស្ទូឌីយោ ៧ សំឡេង"),
+Tab(text: "តេស្តសំឡេងតួ"),
+Tab(text: "Teleprompter"),
+Tab(text: "នាំចេញ & Subtitle"),
+],
+),
+),
+body: TabBarView(
+controller: _tabController,
+children: [
+_buildStudioTab(),
+_buildAuditionTab(),
+_buildTeleprompterTab(),
+_buildExportTab(),
+],
+),
+);
+}
+// TAB 1: STUDIO
+Widget _buildStudioTab() {
+final activeRole = _parsedSegments.isNotEmpty && _activeSegmentIndex < _parsedSegments.length
+? _parsedSegments[_activeSegmentIndex]["role"]!
+: "អ្នកសម្រាយ";
+final activeText = _parsedSegments.isNotEmpty && _activeSegmentIndex < _parsedSegments.length
+? _parsedSegments[_activeSegmentIndex]["text"]!
+: "សូមចុចប៊ូតុងខាងក្រោមដើម្បីចាប់ផ្តើម...";
+return SingleChildScrollView(
+padding: const EdgeInsets.all(14),
+child: Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+TextField(
+controller: _titleController,
+decoration: InputDecoration(
+filled: true,
+fillColor: const Color(0xFF111827),
+labelText: "ចំណងជើងរឿង (Movie Title)",
+prefixIcon: const Icon(Icons.movie, color: Colors.roseAccent),
+border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+),
+),
+const SizedBox(height: 12),
+Wrap(
+spacing: 6,
+runSpacing: 6,
+children: _characters.map((c) {
+return ActionChip(
+avatar: Text(c["icon"]),
+label: Text(c["role"], style: const TextStyle(fontSize: 11)),
+backgroundColor: (c["color"] as MaterialColor).withOpacity(0.2),
+side: BorderSide(color: (c["color"] as MaterialColor).withOpacity(0.5)),
+onPressed: () => _insertTag(c["role"]),
+);
+}).toList(),
+),
+const SizedBox(height: 12),
+Row(
+children: [
+Expanded(
+child: ElevatedButton.icon(
+style: ElevatedButton.styleFrom(
+backgroundColor: Colors.indigoAccent,
+padding: const EdgeInsets.symmetric(vertical: 12),
+shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+),
+onPressed: _isLoading ? null : _generateStoryWithAI,
+icon: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.auto_awesome, size: 16),
+label: Text(_isLoading ? "កំពុងតែង..." : "✨ ផលិត Script ៧ សំឡេង", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+),
+),
+const SizedBox(width: 8),
+OutlinedButton(
+onPressed: () => _loadPresetStory("busan"),
+child: const Text("Train to Busan", style: TextStyle(fontSize: 11)),
+),
+],
+),
+const SizedBox(height: 14),
+Container(
+padding: const EdgeInsets.all(14),
+decoration: BoxDecoration(
+color: const Color(0xFF1E1B4B).withOpacity(0.4),
+borderRadius: BorderRadius.circular(16),
+border: Border.all(color: Colors.indigo.shade500.withOpacity(0.4)),
+),
+child: Column(
+children: [
+Row(
+mainAxisAlignment: MainAxisAlignment.spaceBetween,
+children: [
+Chip(
+avatar: const Icon(Icons.record_voice_over, size: 14, color: Colors.amber),
+label: Text(activeRole, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+backgroundColor: Colors.indigo.shade900,
+),
+Text("{_activeSegmentIndex + 1} /{_parsedSegments.length} វគ្គ", style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold)),
+],
+),
+const SizedBox(height: 10),
+Container(
+padding: const EdgeInsets.all(12),
+width: double.infinity,
+decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(10)),
+child: Text(""$activeText"", style: const TextStyle(fontSize: 13, height: 1.5, color: Colors.white, fontWeight: FontWeight.w500)),
+),
+const SizedBox(height: 12),
+SizedBox(
+width: double.infinity,
+height: 48,
+child: ElevatedButton.icon(
+style: ElevatedButton.styleFrom(
+backgroundColor: _isPlaying ? Colors.rose : Colors.emerald.shade600,
+shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+),
+onPressed: _togglePlayback,
+icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+label: Text(_isPlaying ? "ផ្អាកការអាន (Pause)" : "▶️ ចាក់អានប្តូរសំឡេងតួស្វ័យប្រវត្តិ", style: const TextStyle(fontWeight: FontWeight.bold)),
+),
+),
+],
+),
+),
+const SizedBox(height: 14),
+const Text("អត្ថបទសម្រាយរឿង (Script Editor)៖", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+const SizedBox(height: 6),
+TextField(
+controller: scriptController,
+maxLines: 8,
+onChanged: () => _parseScript(),
+decoration: InputDecoration(
+filled: true,
+fillColor: const Color(0xFF111827),
+border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+hintText: "បញ្ចូលអត្ថបទសម្រាយ...",
+),
+style: const TextStyle(fontSize: 12, height: 1.5),
+),
+],
+),
+);
+}
+// TAB 2: AUDITION
+Widget _buildAuditionTab() {
+return ListView.builder(
+padding: const EdgeInsets.all(14),
+itemCount: _characters.length,
+itemBuilder: (context, idx) {
+final c = _characters[idx];
+return Card(
+color: const Color(0xFF111827),
+margin: const EdgeInsets.only(bottom: 10),
+shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: (c["color"] as MaterialColor).withOpacity(0.3))),
+child: ListTile(
+leading: CircleAvatar(
+backgroundColor: (c["color"] as MaterialColor).withOpacity(0.2),
+child: Text(c["icon"], style: const TextStyle(fontSize: 18)),
+),
+title: Text(c["role"], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+subtitle: Text("Pitch: ${c['pitch']} \vert{} ល្បឿន: ${c['rate']}", style: const TextStyle(fontSize: 11, color: Colors.grey)),
+trailing: IconButton(
+icon: const Icon(Icons.volume_up, color: Colors.amber),
+onPressed: () {
+ScaffoldMessenger.of(context).showSnackBar(
+SnackBar(content: Text("កំពុងតេស្តសំឡេង {c['role']} (Pitch{c['pitch']})")),
+);
+},
+),
+),
+);
+},
+);
+}
+// TAB 3: TELEPROMPTER
+Widget _buildTeleprompterTab() {
+return Padding(
+padding: const EdgeInsets.all(16),
+child: Column(
+children: [
+const Text("អត្ថបទរត់សម្រាប់ថតសម្រាយរឿង (Teleprompter Mode)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+const SizedBox(height: 12),
+Expanded(
+child: Container(
+padding: const EdgeInsets.all(16),
+decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.slate.shade800)),
+child: SingleChildScrollView(
+child: Text(_scriptController.text, style: const TextStyle(fontSize: 18, height: 1.8, color: Colors.amberAccent, fontWeight: FontWeight.bold)),
+),
+),
+),
+],
+),
+);
+}
+// TAB 4: EXPORT
+Widget _buildExportTab() {
+return Padding(
+padding: const EdgeInsets.all(16),
+child: Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+const Text("កំណត់ Gemini API Key (ឥតគិតថ្លៃ)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+const SizedBox(height: 6),
+TextField(
+controller: _apiKeyController,
+decoration: InputDecoration(
+filled: true,
+fillColor: const Color(0xFF111827),
+hintText: "បិទភ្ជាប់ AI Studio API Key នៅទីនេះ...",
+border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+),
+),
+const SizedBox(height: 20),
+ElevatedButton.icon(
+style: ElevatedButton.styleFrom(
+backgroundColor: Colors.indigoAccent,
+minimumSize: const Size(double.infinity, 48),
+shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+),
+onPressed: () {
+Clipboard.setData(ClipboardData(text: _scriptController.text));
+ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("🎉 បាន Copy Script ទាំងមូលទៅកាន់ Clipboard!")));
+},
+icon: const Icon(Icons.copy),
+label: const Text("ចម្លង Script ទាំងមូល (Copy Text)"),
+),
+const SizedBox(height: 12),
+ElevatedButton.icon(
+style: ElevatedButton.styleFrom(
+backgroundColor: Colors.teal.shade700,
+minimumSize: const Size(double.infinity, 48),
+shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+),
+onPressed: () {
+String srt = "";
+int idx = 1;
+int sec = 0;
+for (var seg in _parsedSegments) {
+srt += "idx\n00:00:{sec.toString().padLeft(2, '0')},000 --> 00:00:{(sec + 3).toString().padLeft(2, '0')},000\n[{seg['role']}]${seg['text']}\n\n";
+sec += 4;
+idx++;
+}
+Clipboard.setData(ClipboardData(text: srt));
+ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("🎉 បានបង្កើត និង Copy Subtitle SRT សម្រាប់ CapCut!")));
+},
+icon: const Icon(Icons.subtitles),
+label: const Text("បង្កើត Subtitle .SRT សម្រាប់ CapCut"),
+),
+],
+),
+);
+}
+}
+EOF
+- name: Build Android APK
+run: |
+cd build_temp
+flutter build apk --release
+- name: Upload APK Release
+uses: softprops/action-gh-release@v2
+with:
+tag_name: v2.0.0-{{ github.run_number }}
+name: RecapCraft AI Pro v2.0.0 (Build #{{ github.run_number }})
+files: build_temp/build/app/outputs/flutter-apk/app-release.apk
