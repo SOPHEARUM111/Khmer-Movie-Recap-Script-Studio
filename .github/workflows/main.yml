@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
@@ -24,37 +24,43 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Locate Project Root & Install
+      - name: Build Web & Prepare Capacitor
         run: |
-          # ប្រសិនបើ package.json ស្ថិតក្នុង Folder រង វានឹងរំកិលចូលដោយស្វ័យប្រវត្តិ
+          # ស្វែងរក package.json ប្រសិនបើស្ថិតក្នុង Folder រង
           if [ ! -f "package.json" ]; then
-            SUBDIR=$(find . -maxdepth 2 -name "package.json" -exec dirname {} \;)
+            SUBDIR=$(find . -maxdepth 2 -name "package.json" -not -path "*/node_modules/*" -exec dirname {} \; | head -n 1)
             if [ -n "$SUBDIR" ]; then
-              echo "Moving to $SUBDIR"
+              echo "Moving into project directory: $SUBDIR"
               cd "$SUBDIR"
             fi
           fi
-          
+
+          echo "Installing Dependencies..."
           npm install --legacy-peer-deps
           npm install @capacitor/core @capacitor/cli @capacitor/android
+
+          echo "Building Web App..."
           npm run build
-          
+
+          echo "Initializing Capacitor Android..."
           npx cap init "RecapCraft Studio" "com.recapcraft.studio" --web-dir "dist" || true
           npx cap add android || true
           npx cap sync android
 
-      - name: Build Android APK
+      - name: Build Android APK with Gradle
         run: |
-          ANDROID_DIR=$(find . -type d -name "android" | head -n 1)
+          ANDROID_DIR=$(find . -type d -name "android" -not -path "*/node_modules/*" | head -n 1)
+          if [ -z "$ANDROID_DIR" ]; then
+            echo "Android directory not found!"
+            exit 1
+          fi
           cd "$ANDROID_DIR"
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: RecapCraft-Studio-APK
           path: "**/app-debug.apk"
+          
