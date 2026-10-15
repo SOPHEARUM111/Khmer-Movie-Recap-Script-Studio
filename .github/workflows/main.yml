@@ -24,45 +24,37 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Prepare Web Assets & Capacitor
+      - name: Prepare Web Assets & Setup Capacitor
         run: |
-          # ១. ពន្លា ZIP ប្រសិនបើមាន
-          find . -maxdepth 2 -name "*.zip" -exec unzip -o {} -d ./extracted_app \; || true
-
-          # ២. ស្វែងរកទីតាំង index.html ដើមរបស់គម្រោង
-          HTML_PATH=$(find . -name "index.html" -not -path "*/android/*" -not -path "*/node_modules/*" | head -n 1)
-          if [ -z "$HTML_PATH" ]; then
-            echo "រកមិនឃើញ index.html ទេ!"
-            exit 1
-          fi
-          APP_DIR=$(dirname "$HTML_PATH")
-          echo "Found web content at: $APP_DIR"
-
-          # ៣. ដំឡើង Capacitor ក្នុង Root
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android --force
 
-          # ៤. រៀបចំ Folder dist ឱ្យមានឯកសារ Web គ្រប់ជ្រុងជ្រោយ
+          # បង្កើត folder dist និងចម្លងឯកសារ index.html ចូល
           rm -rf dist
           mkdir -p dist
-          cp -r "$APP_DIR"/* dist/ || true
+          cp index.html dist/index.html
 
-          # ៥. បង្កើត config ចង្អុលទៅ dist ផ្ទាល់
+          # បង្កើត capacitor.config.json ដែលដំណើរការជា HTTP ក្នុង Local WebView
           cat << 'EOF' > capacitor.config.json
           {
             "appId": "com.recapcraft.studio",
             "appName": "RecapCraft Studio",
             "webDir": "dist",
             "server": {
-              "androidScheme": "https",
+              "androidScheme": "http",
               "cleartext": true
             }
           }
           EOF
 
-          # ៦. បង្កើត និង Sync Android
-          npx cap add android || true
+          # បង្កើត Folder Android និង Sync
+          rm -rf android
+          npx cap add android
           npx cap sync android
+
+          # ធានាថាឯកសារ index.html ត្រូវបានចម្លងចូលទៅដល់ Android Assets ផ្ទាល់ ១០០%
+          mkdir -p android/app/src/main/assets/public
+          cp -r dist/* android/app/src/main/assets/public/
 
       - name: Build APK with Gradle
         run: |
@@ -76,4 +68,4 @@ jobs:
         with:
           name: RecapCraft-Studio-APK
           path: "**/app-debug.apk"
-          
+
