@@ -24,17 +24,23 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build Web & Prepare Capacitor
+      - name: Locate Project Directory
+        id: find_dir
         run: |
-          # ស្វែងរក package.json ប្រសិនបើស្ថិតក្នុង Folder រង
-          if [ ! -f "package.json" ]; then
-            SUBDIR=$(find . -maxdepth 2 -name "package.json" -not -path "*/node_modules/*" -exec dirname {} \; | head -n 1)
-            if [ -n "$SUBDIR" ]; then
-              echo "Moving into project directory: $SUBDIR"
-              cd "$SUBDIR"
-            fi
+          # ស្វែងរកឯកសារ package.json នៅគ្រប់កម្រិត Folder
+          PKG_PATH=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
+          if [ -z "$PKG_PATH" ]; then
+            echo "Error: package.json not found in repository!"
+            find . -maxdepth 3
+            exit 1
           fi
+          PROJECT_DIR=$(dirname "$PKG_PATH")
+          echo "Found project at: $PROJECT_DIR"
+          echo "project_dir=$PROJECT_DIR" >> $GITHUB_OUTPUT
 
+      - name: Install Dependencies & Build Web
+        working-directory: ${{ steps.find_dir.outputs.project_dir }}
+        run: |
           echo "Installing Dependencies..."
           npm install --legacy-peer-deps
           npm install @capacitor/core @capacitor/cli @capacitor/android
@@ -42,7 +48,10 @@ jobs:
           echo "Building Web App..."
           npm run build
 
-          echo "Initializing Capacitor Android..."
+      - name: Setup Capacitor Android
+        working-directory: ${{ steps.find_dir.outputs.project_dir }}
+        run: |
+          # កំណត់ Capacitor និងចម្លងឯកសារ Web ទៅកាន់ Android
           npx cap init "RecapCraft Studio" "com.recapcraft.studio" --web-dir "dist" || true
           npx cap add android || true
           npx cap sync android
@@ -51,14 +60,14 @@ jobs:
         run: |
           ANDROID_DIR=$(find . -type d -name "android" -not -path "*/node_modules/*" | head -n 1)
           if [ -z "$ANDROID_DIR" ]; then
-            echo "Android directory not found!"
+            echo "Error: Android folder not found!"
             exit 1
           fi
           cd "$ANDROID_DIR"
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: RecapCraft-Studio-APK
