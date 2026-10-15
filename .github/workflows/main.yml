@@ -24,24 +24,56 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Build Web & Setup Capacitor
+      - name: Extract ZIP & Prepare Web
+        id: prepare
         run: |
-          npm install
+          # ពន្លាឯកសារ ZIP ប្រសិនបើមានក្នុង Repository
+          find . -maxdepth 2 -name "*.zip" -exec unzip -o {} -d ./extracted_app \; || true
+          
+          PKG_PATH=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
+          if [ -z "$PKG_PATH" ]; then
+            echo "Error: package.json not found!"
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$PKG_PATH")
+          echo "Found project at: $PROJECT_DIR"
+          echo "project_dir=$PROJECT_DIR" >> $GITHUB_OUTPUT
+
+      - name: Install Dependencies & Build Web App
+        working-directory: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          npm install --force
+          npm install @capacitor/core @capacitor/cli @capacitor/android --force
           npm run build
-          npx cap add android
+
+      - name: Initialize & Sync Capacitor (JSON Config)
+        working-directory: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          rm -f capacitor.config.ts capacitor.config.js
+          cat << 'EOF' > capacitor.config.json
+          {
+            "appId": "com.recapcraft.studio",
+            "appName": "RecapCraft Studio",
+            "webDir": "dist"
+          }
+          EOF
+
+          npx cap add android || true
           npx cap sync android
 
-      - name: Build APK with Gradle
+      - name: Accept Licenses & Build APK
         run: |
-          cd android
+          # យល់ព្រមលើ Android Licenses លើ SDK ស្រាប់របស់ GitHub Runner
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          
+          ANDROID_DIR=$(find . -type d -name "android" -not -path "*/node_modules/*" | head -n 1)
+          cd "$ANDROID_DIR"
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: RecapCraft-Studio-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: "**/app-debug.apk"
+          
