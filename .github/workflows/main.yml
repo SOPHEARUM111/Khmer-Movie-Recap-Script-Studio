@@ -1,77 +1,610 @@
-name: Build Android APK (Capacitor)
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RecapCraft Studio - កម្មវិធីសម្រាយរឿង</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0B0F17;
+      --bg-card: #131B2A;
+      --bg-card-hover: #1A263D;
+      --border-color: #22324D;
+      --primary: #F59E0B;
+      --primary-hover: #D97706;
+      --accent-blue: #3B82F6;
+      --accent-red: #EF4444;
+      --accent-purple: #8B5CF6;
+      --text-main: #F3F4F6;
+      --text-muted: #9CA3AF;
+    }
 
-on:
-  push:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Kantumruy Pro', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
 
-    steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
+    /* Header & Navigation */
+    header {
+      position: sticky;
+      top: 0;
+      background: rgba(11, 15, 23, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      z-index: 50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-      - name: Setup Java JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #F59E0B, #EF4444);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #FFF;
+      line-height: 1.2;
+    }
 
-      - name: Extract ZIP & Find Project
-        id: prepare
-        run: |
-          find . -maxdepth 2 -name "*.zip" -exec unzip -o {} -d ./extracted_app \;
-          PKG_PATH=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
-          if [ -z "$PKG_PATH" ]; then
-            echo "Error: package.json not found!"
-            exit 1
-          fi
-          PROJECT_DIR=$(dirname "$PKG_PATH")
-          echo "Found project at: $PROJECT_DIR"
-          echo "project_dir=$PROJECT_DIR" >> $GITHUB_OUTPUT
+    .brand-sub {
+      font-size: 11px;
+      color: var(--primary);
+    }
 
-      - name: Install Dependencies & Build Web App
-        working-directory: ${{ steps.prepare.outputs.project_dir }}
-        run: |
-          npm install --force
-          npm install @capacitor/core @capacitor/cli @capacitor/android --force
-          npm run build
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--bg-main);
+      overflow-x: auto;
+    }
 
-      - name: Initialize & Sync Capacitor (JSON Config)
-        working-directory: ${{ steps.prepare.outputs.project_dir }}
-        run: |
-          rm -f capacitor.config.ts capacitor.config.js
-          cat << 'EOF' > capacitor.config.json
-          {
-            "appId": "com.recapcraft.studio",
-            "appName": "RecapCraft Studio",
-            "webDir": "dist"
-          }
-          EOF
+    .nav-tab-btn {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
 
-          npx cap add android || true
-          npx cap sync android
+    .nav-tab-btn.active {
+      background: var(--primary);
+      color: #000;
+      border-color: var(--primary);
+    }
 
-      - name: Accept Android Licenses & Build APK
-        run: |
-          yes | sdkmanager --licenses || true
-          ANDROID_DIR=$(find . -type d -name "android" -not -path "*/node_modules/*" | head -n 1)
-          cd "$ANDROID_DIR"
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+    /* Content Area */
+    .tab-content {
+      flex: 1;
+      padding: 16px;
+      display: none;
+    }
 
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: RecapCraft-Studio-APK
-          path: "**/app-debug.apk"
+    .tab-content.active {
+      display: block;
+    }
+
+    /* SFX Soundboard Grid */
+    .section-header {
+      margin-bottom: 16px;
+    }
+
+    .section-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--primary);
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #FFF;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .audio-api-tag {
+      font-size: 11px;
+      color: #10B981;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .sfx-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sfx-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+
+    .sfx-card:active {
+      transform: scale(0.98);
+      border-color: var(--primary);
+    }
+
+    .sfx-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .sfx-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .sfx-text h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #FFF;
+      margin-bottom: 2px;
+    }
+
+    .sfx-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .sfx-play-btn {
+      padding: 8px 16px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Script View */
+    .script-header-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .script-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .script-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .beat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .beat-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .beat-badge {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .beat-content {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #E5E7EB;
+      margin-bottom: 12px;
+    }
+
+    /* Teleprompter Fullscreen Mode */
+    .tele-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      height: 70vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tele-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 12px;
+    }
+
+    .tele-scroll-area {
+      flex: 1;
+      overflow-y: scroll;
+      padding: 20px 8px;
+      font-size: 22px;
+      line-height: 2;
+      color: #FFF;
+      font-weight: 600;
+      scroll-behavior: smooth;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🎬</div>
+      <div>
+        <div class="brand-title">RecapCraft Studio</div>
+        <div class="brand-sub">Khmer Movie Recap AI</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="nav-tabs">
+    <button class="nav-tab-btn active" onclick="switchTab('sfx')">🎵 SFX សំឡេង</button>
+    <button class="nav-tab-btn" onclick="switchTab('script')">📝 ស្គ្រីបកាត់ត</button>
+    <button class="nav-tab-btn" onclick="switchTab('teleprompter')">📺 ផ្ទាំងអាន</button>
+  </div>
+
+  <!-- TAB 1: Cinematic SFX Soundboard -->
+  <div id="tab-sfx" class="tab-content active">
+    <div class="section-header">
+      <span class="section-badge">AUDIO CUE SOUNDBOARD</span>
+      <div class="section-title">
+        <span>សំឡេងបែបភាពយន្ត (SFX)</span>
+        <span class="audio-api-tag">● Web Audio API</span>
+      </div>
+    </div>
+
+    <div class="sfx-grid">
+      <!-- SFX 1: Sub Boom -->
+      <div class="sfx-card">
+        <div class="sfx-info">
+          <div class="sfx-icon" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B;">⚡</div>
+          <div class="sfx-text">
+            <h4>សំឡេងបាសបន្លឺធ្ងន់</h4>
+            <p>Cinematic Sub Boom</p>
+          </div>
+        </div>
+        <button class="sfx-play-btn" onclick="playSubBoom()">▶ ចាក់</button>
+      </div>
+
+      <!-- SFX 2: Heartbeat Thump -->
+      <div class="sfx-card">
+        <div class="sfx-info">
+          <div class="sfx-icon" style="background: rgba(239, 68, 68, 0.2); color: #EF4444;">💓</div>
+          <div class="sfx-text">
+            <h4>សំឡេងបេះដូងលោត</h4>
+            <p>Heartbeat Thump</p>
+          </div>
+        </div>
+        <button class="sfx-play-btn" onclick="playHeartbeat()">▶ ចាក់</button>
+      </div>
+
+      <!-- SFX 3: Tension Riser -->
+      <div class="sfx-card">
+        <div class="sfx-info">
+          <div class="sfx-icon" style="background: rgba(139, 92, 246, 0.2); color: #8B5CF6;">📈</div>
+          <div class="sfx-text">
+            <h4>សំឡេងតានតឹងឡើងខ្ពស់</h4>
+            <p>Tension Riser</p>
+          </div>
+        </div>
+        <button class="sfx-play-btn" onclick="playTensionRiser()">▶ ចាក់</button>
+      </div>
+
+      <!-- SFX 4: Jump Scare Stinger -->
+      <div class="sfx-card">
+        <div class="sfx-info">
+          <div class="sfx-icon" style="background: rgba(239, 68, 68, 0.2); color: #EF4444;">⚡</div>
+          <div class="sfx-text">
+            <h4>សំឡេងកន្ត្រាក់អារម្មណ៍</h4>
+            <p>Jump Scare Stinger</p>
+          </div>
+        </div>
+        <button class="sfx-play-btn" onclick="playJumpScare()">▶ ចាក់</button>
+      </div>
+
+      <!-- SFX 5: Eerie Ghost Drone -->
+      <div class="sfx-card">
+        <div class="sfx-info">
+          <div class="sfx-icon" style="background: rgba(59, 130, 246, 0.2); color: #3B82F6;">👻</div>
+          <div class="sfx-text">
+            <h4>សំឡេងបរិយាកាសព្រឺព្រួច</h4>
+            <p>Eerie Ghost Drone</p>
+          </div>
+        </div>
+        <button class="sfx-play-btn" onclick="playGhostDrone()">▶ ចាក់</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: Script View -->
+  <div id="tab-script" class="tab-content">
+    <div class="script-header-card">
+      <div class="script-title">Train to Busan - រឿងពេញ Master Edition</div>
+      <div class="script-desc">
+        ស្គ្រីបសម្រាយរឿងបែប Beat-by-Beat ជាមួយការណែនាំសាច់រឿង រូបភាពកាត់ត និងពេលវេលាត្រូវបន្លឺសំឡេង SFX ជំនួយអារម្មណ៍។
+      </div>
+    </div>
+
+    <div class="beat-card">
+      <div class="beat-meta">
+        <span class="beat-badge">Beat #1 • 00:00 - 02:30</span>
+        <button class="sfx-play-btn" style="padding: 4px 10px; font-size: 11px;" onclick="playSubBoom()">⚡ Sub Boom</button>
+      </div>
+      <div class="beat-content">
+        [ការបើកឆាក / Hook Opening]: សូមស្វាគមន៍មកកាន់ការសម្រាយរឿង! នៅកណ្ដាលផ្លូវដែលស្ងាត់ជ្រងំ ឡានដឹកទំនិញមួយបានបើកកាត់ប៉ុស្តិ៍ត្រួតពិនិត្យចម្លែក។ គ្មាននរណាម្នាក់ដឹងទេថា មហន្តរាយដ៏រន្ធត់កំពុងតែរង់ចាំពួកគេនៅខាងមុខ...
+      </div>
+    </div>
+
+    <div class="beat-card">
+      <div class="beat-meta">
+        <span class="beat-badge">Beat #2 • 02:30 - 05:00</span>
+        <button class="sfx-play-btn" style="padding: 4px 10px; font-size: 11px;" onclick="playJumpScare()">⚡ Jump Scare</button>
+      </div>
+      <div class="beat-content">
+        [ឈុតឆាកតក់ស្លុត]: ស្រាប់តែមានអ្វីមួយលោតកាត់ពីមុខឡាន! សំឡេងកកិតហ្វ្រាំងបន្លឺឡើងយ៉ាងរំពង។ នៅពេលអ្នកបើកបរចុះទៅពិនិត្យមើល អ្វីដែលគាត់បានឃើញមិនមែនជាសត្វធម្មតានោះទេ តែជាសត្វដែលឆ្លងវីរុសកាចសាហាវ!
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: Teleprompter -->
+  <div id="tab-teleprompter" class="tab-content">
+    <div class="tele-card">
+      <div class="tele-controls">
+        <button id="tele-btn" class="sfx-play-btn" onclick="toggleTeleprompter()">▶ ចាប់ផ្ដើមអានស្វ័យប្រវត្តិ</button>
+        <span style="font-size: 12px; color: var(--text-muted);">ល្បឿន: ធម្មតា</span>
+      </div>
+      <div id="tele-scroll" class="tele-scroll-area">
+        សូមស្វាគមន៍មកកាន់ការសម្រាយរឿងពេញលេញ Train to Busan!<br><br>
+        នៅពេលរថភ្លើងចាប់ផ្ដើមចាកចេញពីស្ថានីយសេអ៊ូល គ្មាននរណាម្នាក់ដឹងទេថា នោះគឺជាដំណើរដែលគ្មានផ្លូវត្រឡប់ក្រោយ...<br><br>
+        ការឆ្លងរាលដាលបានកើតឡើងយ៉ាងឆាប់រហ័ស មនុស្សម្នាក់ទៅម្នាក់ទៀតបានប្រែជាឆ្កួតកាចសាហាវ!<br><br>
+        តើឪពុកម្នាក់នេះ អាចការពារកូនស្រីជាទីស្រឡាញ់របស់គាត់ឱ្យរួចផុតពីក្រញាំបិសាចទាំងនោះបានដែរឬទេ?
+      </div>
+    </div>
+  </div>
+
+  <!-- Web Audio API Script Engine -->
+  <script>
+    // Tab Switching Logic
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
+
+      document.getElementById('tab-' + tabName).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+
+    // Audio Context Setup
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // 1. Cinematic Sub Boom (សំឡេងបាសបន្លឺធ្ងន់)
+    function playSubBoom() {
+      const ctx = getAudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(120, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 1.2);
+
+      gain.gain.setValueAtTime(1.0, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 1.5);
+    }
+
+    // 2. Heartbeat Thump (សំឡេងបេះដូងលោត)
+    function playHeartbeat() {
+      const ctx = getAudioContext();
+      const playThump = (time, freq, duration) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, time);
+        osc.frequency.exponentialRampToValueAtTime(35, time + duration);
+
+        gain.gain.setValueAtTime(0.8, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(time);
+        osc.stop(time + duration);
+      };
+
+      playThump(ctx.currentTime, 80, 0.15);
+      playThump(ctx.currentTime + 0.22, 65, 0.25);
+    }
+
+    // 3. Tension Riser (សំឡេងតានតឹងឡើងខ្ពស់)
+    function playTensionRiser() {
+      const ctx = getAudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(80, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 2.0);
+
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 1.8);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.1);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 2.2);
+    }
+
+    // 4. Jump Scare Stinger (សំឡេងកន្ត្រាក់អារម្មណ៍)
+    function playJumpScare() {
+      const ctx = getAudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(850, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.6);
+
+      gain.gain.setValueAtTime(0.8, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.75);
+    }
+
+    // 5. Eerie Ghost Drone (សំឡេងបរិយាកាសព្រឺព្រួច)
+    function playGhostDrone() {
+      const ctx = getAudioContext();
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(140, ctx.currentTime);
+      osc1.frequency.linearRampToValueAtTime(145, ctx.currentTime + 2.5);
+
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(143, ctx.currentTime);
+      osc2.frequency.linearRampToValueAtTime(138, ctx.currentTime + 2.5);
+
+      gain.gain.setValueAtTime(0.01, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 1.0);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 3.0);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start();
+      osc2.start();
+      osc1.stop(ctx.currentTime + 3.1);
+      osc2.stop(ctx.currentTime + 3.1);
+    }
+
+    // Teleprompter Autoscroll Logic
+    let scrollInterval = null;
+    function toggleTeleprompter() {
+      const btn = document.getElementById('tele-btn');
+      const area = document.getElementById('tele-scroll');
+
+      if (scrollInterval) {
+        clearInterval(scrollInterval);
+        scrollInterval = null;
+        btn.innerHTML = '▶ ចាប់ផ្ដើមអានស្វ័យប្រវត្តិ';
+        btn.style.background = 'rgba(245, 158, 11, 0.15)';
+      } else {
+        btn.innerHTML = '⏸ ផ្អាកការអាន';
+        btn.style.background = 'rgba(239, 68, 68, 0.2)';
+        scrollInterval = setInterval(() => {
+          area.scrollTop += 1;
+        }, 40);
+      }
+    }
+  </script>
+</body>
+</html>
+
