@@ -1,0 +1,8 @@
+{
+  "appId": "com.recapcraft.studio",
+  "appName": "RecapCraft Studio",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
