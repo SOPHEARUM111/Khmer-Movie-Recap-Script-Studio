@@ -24,50 +24,53 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Locate Project Directory
-        id: find_dir
+      - name: Extract ZIP File & Locate Project
+        id: prepare_project
         run: |
-          # ស្វែងរកឯកសារ package.json នៅគ្រប់កម្រិត Folder
+          # ពន្លាឯកសារ ZIP ប្រសិនបើមានក្នុង repository
+          ZIP_FILE=$(find . -name "*.zip" | head -n 1)
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Unzipping: $ZIP_FILE"
+            unzip -o "$ZIP_FILE" -d extracted_project
+          fi
+
+          # ស្វែងរកទីតាំង package.json
           PKG_PATH=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
           if [ -z "$PKG_PATH" ]; then
-            echo "Error: package.json not found in repository!"
-            find . -maxdepth 3
+            echo "Error: package.json still not found!"
             exit 1
           fi
+
           PROJECT_DIR=$(dirname "$PKG_PATH")
-          echo "Found project at: $PROJECT_DIR"
+          echo "Found project directory at: $PROJECT_DIR"
           echo "project_dir=$PROJECT_DIR" >> $GITHUB_OUTPUT
 
-      - name: Install Dependencies & Build Web
-        working-directory: ${{ steps.find_dir.outputs.project_dir }}
+      - name: Install Dependencies & Build Web App
+        working-directory: ${{ steps.prepare_project.outputs.project_dir }}
         run: |
-          echo "Installing Dependencies..."
           npm install --legacy-peer-deps
           npm install @capacitor/core @capacitor/cli @capacitor/android
-
-          echo "Building Web App..."
           npm run build
 
-      - name: Setup Capacitor Android
-        working-directory: ${{ steps.find_dir.outputs.project_dir }}
+      - name: Initialize & Sync Capacitor Android
+        working-directory: ${{ steps.prepare_project.outputs.project_dir }}
         run: |
-          # កំណត់ Capacitor និងចម្លងឯកសារ Web ទៅកាន់ Android
           npx cap init "RecapCraft Studio" "com.recapcraft.studio" --web-dir "dist" || true
           npx cap add android || true
           npx cap sync android
 
-      - name: Build Android APK with Gradle
+      - name: Build Android APK
         run: |
           ANDROID_DIR=$(find . -type d -name "android" -not -path "*/node_modules/*" | head -n 1)
           if [ -z "$ANDROID_DIR" ]; then
-            echo "Error: Android folder not found!"
+            echo "Android directory not found!"
             exit 1
           fi
           cd "$ANDROID_DIR"
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: RecapCraft-Studio-APK
