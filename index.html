@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>RecapCraft Studio - Khmer Movie Recap AI</title>
+  <title>RecapCraft Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -14,9 +14,7 @@
       --bg-card-sub: #1E293B;
       --border-color: #334155;
       --primary: #F59E0B;
-      --primary-glow: rgba(245, 158, 11, 0.25);
       --accent-blue: #38BDF8;
-      --accent-red: #F87171;
       --accent-purple: #A855F7;
       --accent-green: #34D399;
       --text-main: #F8FAFC;
@@ -29,6 +27,7 @@
       padding: 0;
       font-family: 'Kantumruy Pro', sans-serif;
       -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
 
     body {
@@ -43,7 +42,7 @@
     .top-bar {
       position: sticky;
       top: 0;
-      background: rgba(8, 13, 26, 0.95);
+      background: rgba(8, 13, 26, 0.98);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border-color);
       padding: 10px 14px;
@@ -51,13 +50,13 @@
       align-items: center;
       gap: 8px;
       overflow-x: auto;
-      z-index: 50;
+      z-index: 100;
     }
 
     .top-bar::-webkit-scrollbar { display: none; }
 
     .top-btn {
-      padding: 7px 12px;
+      padding: 8px 14px;
       border-radius: 10px;
       font-size: 13px;
       font-weight: 600;
@@ -69,31 +68,18 @@
       align-items: center;
       gap: 6px;
       white-space: nowrap;
-      transition: all 0.2s ease;
+      transition: transform 0.1s ease;
+    }
+
+    .top-btn:active {
+      transform: scale(0.95);
     }
 
     .top-btn.active {
       background: var(--primary);
       color: #000;
       border-color: var(--primary);
-    }
-
-    .top-btn.purple-btn {
-      background: rgba(168, 85, 247, 0.2);
-      border-color: var(--accent-purple);
-      color: var(--accent-purple);
-    }
-
-    .top-btn.green-btn {
-      background: rgba(52, 211, 153, 0.2);
-      border-color: var(--accent-green);
-      color: var(--accent-green);
-    }
-
-    .top-btn.magic-btn {
-      background: linear-gradient(135deg, #F59E0B, #EF4444);
-      color: #FFF;
-      border: none;
+      font-weight: 700;
     }
 
     /* Container Views */
@@ -105,17 +91,21 @@
       width: 100%;
     }
 
-    .view-panel { display: none; }
-    .view-panel.active { display: block; }
+    .view-panel { 
+      display: none; 
+    }
+    
+    .view-panel.active { 
+      display: block; 
+    }
 
-    /* Movie Header Card */
+    /* Banner Card */
     .movie-banner {
       background: linear-gradient(180deg, #131E36 0%, #0F172A 100%);
       border: 1px solid var(--border-color);
       border-radius: 18px;
       padding: 18px;
       margin-bottom: 16px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     }
 
     .badge-genre {
@@ -123,13 +113,11 @@
       font-size: 11px;
       font-weight: 700;
       color: var(--primary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
       margin-bottom: 6px;
     }
 
     .movie-title {
-      font-size: 19px;
+      font-size: 18px;
       font-weight: 700;
       color: #FFF;
       line-height: 1.4;
@@ -162,7 +150,7 @@
 
     .action-tele-btn {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       border-radius: 12px;
       background: var(--primary);
       border: none;
@@ -174,6 +162,10 @@
       justify-content: center;
       gap: 8px;
       cursor: pointer;
+    }
+
+    .action-tele-btn:active {
+      transform: scale(0.98);
     }
 
     /* Hook Card */
@@ -190,33 +182,12 @@
       font-weight: 700;
       color: var(--primary);
       margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
     .hook-text {
       font-size: 13px;
       line-height: 1.7;
       color: #E2E8F0;
-    }
-
-    /* Legend Pills */
-    .legend-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 16px;
-    }
-
-    .legend-pill {
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 4px;
     }
 
     /* Scene / Beat Cards */
@@ -237,12 +208,6 @@
       margin-bottom: 12px;
     }
 
-    .beat-num-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
     .num-tag {
       background: var(--primary);
       color: #000;
@@ -254,28 +219,6 @@
       align-items: center;
       justify-content: center;
       font-size: 14px;
-    }
-
-    .beat-time {
-      font-size: 12px;
-      color: var(--text-muted);
-      background: var(--bg-card-sub);
-      padding: 3px 8px;
-      border-radius: 6px;
-    }
-
-    .beat-actions {
-      display: flex;
-      gap: 6px;
-    }
-
-    .beat-icon-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 15px;
-      padding: 4px;
     }
 
     .scene-block {
@@ -291,25 +234,22 @@
       font-size: 11px;
       font-weight: 700;
       margin-bottom: 3px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
     .block-content {
-      font-size: 13.5px;
+      font-size: 13px;
       line-height: 1.7;
       color: #E2E8F0;
     }
 
     .sfx-trigger-btn {
       margin-top: 8px;
-      padding: 6px 12px;
+      padding: 8px 14px;
       background: rgba(245, 158, 11, 0.15);
       border: 1px solid var(--primary);
       border-radius: 8px;
       color: var(--primary);
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       display: inline-flex;
@@ -317,11 +257,16 @@
       gap: 6px;
     }
 
+    .sfx-trigger-btn:active {
+      background: var(--primary);
+      color: #000;
+    }
+
     /* Soundboard Tab */
     .sfx-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
     .sfx-btn-card {
@@ -339,8 +284,8 @@
       background: #020617;
       border: 1px solid var(--border-color);
       border-radius: 16px;
-      padding: 20px;
-      height: 75vh;
+      padding: 16px;
+      height: 72vh;
       display: flex;
       flex-direction: column;
     }
@@ -357,7 +302,7 @@
     .tele-scroll-content {
       flex: 1;
       overflow-y: scroll;
-      font-size: 22px;
+      font-size: 21px;
       line-height: 2.2;
       color: #FFF;
       font-weight: 600;
@@ -367,145 +312,112 @@
 </head>
 <body>
 
-  <!-- Top Studio Navigation -->
+  <!-- Top Studio Bar -->
   <div class="top-bar">
-    <button class="top-btn active" onclick="switchView('script', this)">🎬 Script</button>
-    <button class="top-btn" onclick="switchView('teleprompter', this)">📖 អាន</button>
-    <button class="top-btn" onclick="switchView('app', this)">📱 App</button>
-    <button class="top-btn" onclick="switchView('sfx', this)">🎵 SFX</button>
-    <button class="top-btn" onclick="exportScript()">📥 Export</button>
-    <button class="top-btn purple-btn" onclick="alert('មុខងារក្លូនសំឡេង AI!')">🎙️ Clone</button>
-    <button class="top-btn green-btn" onclick="alert('ថតសំឡេង Mic!')">🎙️</button>
-    <button class="top-btn magic-btn" onclick="alert('បង្កើតឈុតឆាក AI!')">🪄</button>
+    <button class="top-btn active" data-view="script">🎬 Script</button>
+    <button class="top-btn" data-view="teleprompter">📖 អាន</button>
+    <button class="top-btn" data-view="sfx">🎵 SFX</button>
+    <button class="top-btn" data-view="app">📱 App</button>
   </div>
 
-  <!-- Main Work Area -->
+  <!-- Content Work Area -->
   <div class="content-area">
 
-    <!-- VIEW 1: SCRIPT STUDIO VIEW -->
+    <!-- VIEW 1: SCRIPT -->
     <div id="view-script" class="view-panel active">
       <div class="movie-banner">
-        <span class="badge-genre">ភ័យរន្ធត់ / ព្រឺព្រួច / មនោសញ្ចេតនាកម្សត់ (ZOMBIE THRILLER & EMOTIONAL MASTERPIECE)</span>
-        <div class="badge-sub">ថ្នាក់: លម្អិតខ្លាំង Beat-by-Beat គ្រប់យុទ្ធសាស្ត្រ</div>
-        <div class="badge-tone">សម្លេង: រំភើបញាប់ញ័រ ព្រឺរន្ធត់ និងក្ដុកក្ដួលស្រក់ទឹកភ្នែក</div>
-        <h1 class="movie-title">Train to Busan (រថភ្លើងទៅកាន់ប៊ូសាន) - រឿងពេញ Master Edition (Acts I - V: 00:00 - 90:00)</h1>
-        <p class="movie-desc">Script សម្រាយរឿងពេញលេញ Train to Busan តាំងពីដើមរហូតដល់ចប់ តាមរចនាសម្ព័ន្ធរឿងទាំងមូល ៩០ នាទី Beat-by-Beat ចំនួន ២៣ ឈុតឆាក។ ចាប់ពីការផ្ទុះមេរោគដំបូង ភាពចលាចលលើរថភ្លើង ការប្រយុទ្ធទម្លុះទូ ការលះបង់របស់អ្នកដំណើររហូតដល់មនោសញ្ចេតនាបេះដូងចុងក្រោយ និងបទចម្រៀង Aloha Oe នៅផ្លូវរូងក្រោមដីប៊ូសាន។</p>
-        <button class="action-tele-btn" onclick="switchView('teleprompter', document.querySelectorAll('.top-btn')[1])">
+        <span class="badge-genre">ភ័យរន្ធត់ / ព្រឺព្រួច / មនោសញ្ចេតនាកម្សត់</span>[span_2](start_span)[span_2](end_span)
+        <div class="badge-sub">ថ្នាក់: លម្អិតខ្លាំង Beat-by-Beat គ្រប់យុទ្ធសាស្ត្រ</div>[span_3](start_span)[span_3](end_span)
+        <div class="badge-tone">សម្លេង: រំភើបញាប់ញ័រ ព្រឺរន្ធត់ និងក្ដុកក្ដួលស្រក់ទឹកភ្នែក</div>[span_4](start_span)[span_4](end_span)
+        <h1 class="movie-title">Train to Busan (រថភ្លើងទៅកាន់ប៊ូសាន) - Master Edition</h1>[span_5](start_span)[span_5](end_span)
+        <p class="movie-desc">Script សម្រាយរឿងពេញលេញ Train to Busan តាំងពីដើមរហូតដល់ចប់ តាមរចនាសម្ព័ន្ធរឿងទាំងមូល ៩០ នាទី Beat-by-Beat ចំនួន ២៣ ឈុតឆាក។</p>[span_6](start_span)[span_6](end_span)
+        <button class="action-tele-btn" id="btn-open-tele">
           📺 បើកផ្ទាំងអាន Teleprompter
-        </button>
+        </button>[span_7](start_span)[span_7](end_span)
       </div>
 
-      <!-- Hook Box -->
       <div class="hook-box">
-        <div class="hook-title">✨ [ពាក្យបើកឆាកទាក់ទាញ - HOOK OPENING]</div>
+        <div class="hook-title">✨ [ពាក្យបើកឆាកទាក់ទាញ - HOOK OPENING]</div>[span_8](start_span)[span_8](end_span)
         <p class="hook-text">
-          ជំរាបសួរប្រិយមិត្តទាំងអស់គ្នា! សូមស្វាគមន៍មកកាន់ការសម្រាយរឿង Train to Busan។ នៅក្នុងកាលៈទេសៈមហន្តរាយដ៏ព្រឺព្រួច អ្វីដែលគួរឱ្យខ្លាចបំផុតមិនមែនជាខ្មោចឆៅនោះទេ តែជាភាពអត្មានិយមរបស់មនុស្ស! តើឪពុកម្នាក់អាចការពារកូនស្រីជាទីស្រឡាញ់របស់ខ្លួន ឱ្យរួចផុតពីក្រញាំខ្មោចឆៅនៅលើរថភ្លើងល្បឿនលឿននេះបានដែរឬទេ? តោះ! កុំឱ្យខាតពេលយូរ សូមទស្សនាទាំងអស់គ្នា!
+          ជំរាបសួរប្រិយមិត្តទាំងអស់គ្នា! សូមស្វាគមន៍មកកាន់ការសម្រាយរឿង Train to Busan។ នៅក្នុងកាលៈទេសៈមហន្តរាយដ៏ព្រឺព្រួច អ្វីដែលគួរឱ្យខ្លាចបំផុតមិនមែនជាខ្មោចឆៅនោះទេ តែជាភាពអត្មានិយមរបស់មនុស្ស[span_9](start_span)[span_9](end_span)!
         </p>
       </div>
 
-      <!-- Legend -->
-      <div class="legend-bar">
-        <span class="legend-pill" style="background: rgba(56, 189, 248, 0.15); color: #38BDF8;">🎥 [យុទ្ធសាស្ត្រ]: រូបភាព/ប្លង់</span>
-        <span class="legend-pill" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B;">🔊 [សំឡេងបន្លឺ]: SFX/ភ្លេង</span>
-        <span class="legend-pill" style="background: rgba(52, 211, 153, 0.15); color: #34D399;">🎙️ [ពន្យល់សំឡេងរឿង]: ការអាន</span>
-        <span class="legend-pill" style="background: rgba(244, 114, 182, 0.15); color: #F472B6;">💖 [អារម្មណ៍តួអង្គ]: កាយវិការ</span>
-      </div>
-
-      <!-- BEAT 1 -->
+      <!-- Beat 1 -->
       <div class="beat-card">
         <div class="beat-header">
-          <div class="beat-num-badge">
+          <div style="display:flex; align-items:center; gap:8px;">
             <span class="num-tag">1</span>
-            <strong style="font-size:14px;">សារធាតុគីមីលេចធ្លាយ & សត្វក្តាន់ចម្លែក</strong>
-            <span class="beat-time">00:00 - 03:15</span>
+            <strong>សារធាតុគីមីលេចធ្លាយ & សត្វក្តាន់ចម្លែក</strong>
           </div>
-          <div class="beat-actions">
-            <button class="beat-icon-btn" onclick="playSubBoom()">▶</button>
-            <button class="beat-icon-btn">🪄</button>
-            <button class="beat-icon-btn">✏️</button>
-            <button class="beat-icon-btn">📄</button>
-          </div>
+          <span style="font-size:12px; color:var(--text-muted);">00:00 - 03:15</span>
         </div>
-
         <div class="scene-block visual">
-          <div class="block-label" style="color: #38BDF8;">🎥 [យុទ្ធសាស្ត្រ]: ការពិពណ៌នារូបភាព ប្លង់កាមេរ៉ា & បរិយាកាស</div>
-          <p class="block-content">ប្លង់បើកឆាកបង្ហាញពីផ្លូវថ្នល់ជនបទស្ងាត់ជ្រងំក្បែរទីក្រុងប៊ីយូងសាន។ មានប៉ូលិសត្រួតពិនិត្យចត្តាឡីស័ក (Quarantine Checkpoint) ដែលទាហាន និងមន្ត្រីពាក់ឈុតការពារជំងឺពុលកំពុងតែបាញ់ថ្នាំសម្លាប់មេរោគលើយានយន្តគ្រប់គ្រឿង។ ឡានដឹកបន្លែចាស់មួយគ្រឿងបើកមកដល់ អ្នកបើកបរបានជជែកតវ៉ាបន្តិចបន្តួច រួចក៏បើកចេញផុតពីប៉ុស្តិ៍ត្រួតពិនិត្យ។ ពេលកំពុងបើកបរតាមផ្លូវព្រៃស្ងាត់ គាត់អោនរើសទូរសព្ទ ស្រាប់តែមានសំឡេងបុកយ៉ាងខ្លាំង "ឌឹប!"។</p>
+          <div class="block-label" style="color:var(--accent-blue);">🎥 ការពិពណ៌នារូបភាព & បរិយាកាស</div>
+          <p class="block-content">ប្លង់បើកឆាកបង្ហាញពីផ្លូវថ្នល់ជនបទស្ងាត់ជ្រងំក្បែរទីក្រុងប៊ីយូងសាន។ មានប៉ូលិសត្រួតពិនិត្យចត្តាឡីស័កកំពុងតែបាញ់ថ្នាំសម្លាប់មេរោគ។ ពេលឡានបើកចេញផុត ស្រាប់តែបុកសត្វក្តាន់មួយក្បាលយ៉ាងខ្លាំង!</p>
         </div>
-
         <div class="scene-block sfx">
-          <div class="block-label" style="color: #F59E0B;">🔊 [សំឡេងបន្លឺ]: សំឡេងបែបផែន (SFX) & ភ្លេងដំឡើងថាមពល</div>
-          <p class="block-content">សំឡេងម៉ាស៊ីនបាញ់ថ្នាំសម្លាប់មេរោគ [SFX: Chemical Spraying Hiss] អមដោយសំឡេងបុកទង្គិចធ្ងន់ [SFX: Heavy Car Impact Thud]។ នៅពេលសត្វក្តាន់ក្រោកឡើង ឮសំឡេងឆ្អឹងបាក់តម្រង់ឆ្អឹង "ក្រិក... ក្រិក..." [SFX: Bone Cracking] និងសំឡេងបាសបន្លឺឡើងយ៉ាងធ្ងន់ [SFX: Low Horror Sub Drone]។</p>
-          <button class="sfx-trigger-btn" onclick="playBoneCracking()">▶ ចាក់សំឡេង SFX (Bone Cracking)</button>
-          <button class="sfx-trigger-btn" onclick="playSubBoom()">▶ ចាក់ Sub Boom</button>
+          <div class="block-label" style="color:var(--primary);">🔊 សំឡេងបែបផែន (SFX)</div>
+          <p class="block-content">សំឡេងបុកទង្គិចធ្ងន់ [Heavy Thud] និងសំឡេងបាសបន្លឺឡើងយ៉ាងធ្ងន់ [Sub Boom]។</p>
+          <button class="sfx-trigger-btn btn-play-sfx" data-sound="subboom">⚡ ចាក់ Sub Boom</button>
+          <button class="sfx-trigger-btn btn-play-sfx" data-sound="bone">🦴 ចាក់ Bone Cracking</button>
         </div>
       </div>
 
-      <!-- BEAT 2 -->
+      <!-- Beat 2 -->
       <div class="beat-card">
         <div class="beat-header">
-          <div class="beat-num-badge">
+          <div style="display:flex; align-items:center; gap:8px;">
             <span class="num-tag">2</span>
-            <strong style="font-size:14px;">ការចាកចេញពីរថភ្លើងសេអ៊ូល & នារីឆ្លងមេរោគ</strong>
-            <span class="beat-time">03:15 - 08:30</span>
+            <strong>ការចាកចេញពីរថភ្លើងសេអ៊ូល & ភាពចលាចល</strong>
           </div>
-          <div class="beat-actions">
-            <button class="beat-icon-btn" onclick="playTensionRiser()">▶</button>
-            <button class="beat-icon-btn">🪄</button>
-            <button class="beat-icon-btn">✏️</button>
-            <button class="beat-icon-btn">📄</button>
-          </div>
+          <span style="font-size:12px; color:var(--text-muted);">03:15 - 08:30</span>
         </div>
-
         <div class="scene-block visual">
-          <div class="block-label" style="color: #38BDF8;">🎥 [យុទ្ធសាស្ត្រ]: រូបភាព/ប្លង់</div>
-          <p class="block-content">ស្ថានីយរថភ្លើងសេអ៊ូលនាពេលព្រលឹមស្រាងៗ។ ស៊ុកវូ (Seok-woo) និងកូនស្រី ស៊ូវ៉ុន (Su-an) បានឡើងលើរថភ្លើង KTX ល្បឿនលឿនលេខ 101។ នៅវិនាទីចុងក្រោយមុនទ្វាររថភ្លើងបិទ នារីវ័យក្មេងម្នាក់ដែលរបួសជើងបានរត់លបចូលក្នុងទូរថភ្លើងយ៉ាងអាថ៌កំបាំង។</p>
+          <div class="block-label" style="color:var(--accent-blue);">🎥 ការពិពណ៌នារូបភាព & បរិយាកាស</div>
+          <p class="block-content">រថភ្លើង KTX ល្បឿនលឿនចាប់ផ្ដើមរំកិលចេញ។ នារីម្នាក់ដែលរងរបួសជើងបានលបចូលតាមទ្វារទូរថភ្លើងនៅវិនាទីចុងក្រោយ។</p>
         </div>
-
         <div class="scene-block sfx">
-          <div class="block-label" style="color: #F59E0B;">🔊 [សំឡេងបន្លឺ]: SFX/ភ្លេង</div>
-          <p class="block-content">សំឡេងទ្វាររថភ្លើងបិទ [SFX: Train Door Close Whistle] អមជាមួយសំឡេងដង្ហើមញាប់ញ័រដង្ហក់ខ្លាំង និងសំឡេងសរសៃឈាមលោតញាប់ [SFX: Rapid Heartbeat]។</p>
-          <button class="sfx-trigger-btn" onclick="playHeartbeat()">▶ ចាក់ Heartbeat</button>
-          <button class="sfx-trigger-btn" onclick="playTensionRiser()">▶ ចាក់ Tension Riser</button>
+          <div class="block-label" style="color:var(--primary);">🔊 សំឡេងបែបផែន (SFX)</div>
+          <p class="block-content">សំឡេងបេះដូងលោតញាប់ និងភ្លេងដំឡើងភាពតានតឹង។</p>
+          <button class="sfx-trigger-btn btn-play-sfx" data-sound="heartbeat">💓 ចាក់ Heartbeat</button>
+          <button class="sfx-trigger-btn btn-play-sfx" data-sound="riser">📈 ចាក់ Tension Riser</button>
         </div>
       </div>
     </div>
 
-    <!-- VIEW 2: FULL SOUNDBOARD TAB -->
+    <!-- VIEW 2: SFX SOUNDBOARD -->
     <div id="view-sfx" class="view-panel">
       <div class="sfx-grid">
         <div class="sfx-btn-card">
           <div><strong>💥 Cinematic Sub Boom</strong><p style="font-size:12px; color:var(--text-muted)">សំឡេងបាសបន្លឺធ្ងន់</p></div>
-          <button class="sfx-trigger-btn" onclick="playSubBoom()">▶ ចាក់</button>
+          <button class="sfx-trigger-btn btn-play-sfx" data-sound="subboom">▶ ចាក់</button>
         </div>
         <div class="sfx-btn-card">
           <div><strong>💓 Heartbeat Thump</strong><p style="font-size:12px; color:var(--text-muted)">សំឡេងបេះដូងលោតភ័យញាប់</p></div>
-          <button class="sfx-trigger-btn" onclick="playHeartbeat()">▶ ចាក់</button>
+          <button class="sfx-trigger-btn btn-play-sfx" data-sound="heartbeat">▶ ចាក់</button>
         </div>
         <div class="sfx-btn-card">
           <div><strong>📈 Tension Riser</strong><p style="font-size:12px; color:var(--text-muted)">សំឡេងតានតឹងឡើងខ្ពស់</p></div>
-          <button class="sfx-trigger-btn" onclick="playTensionRiser()">▶ ចាក់</button>
+          <button class="sfx-trigger-btn btn-play-sfx" data-sound="riser">▶ ចាក់</button>
         </div>
         <div class="sfx-btn-card">
           <div><strong>⚡ Jump Scare Stinger</strong><p style="font-size:12px; color:var(--text-muted)">សំឡេងកន្ត្រាក់អារម្មណ៍</p></div>
-          <button class="sfx-trigger-btn" onclick="playJumpScare()">▶ ចាក់</button>
+          <button class="sfx-trigger-btn btn-play-sfx" data-sound="jumpscare">▶ ចាក់</button>
         </div>
         <div class="sfx-btn-card">
           <div><strong>🦴 Bone Cracking</strong><p style="font-size:12px; color:var(--text-muted)">សំឡេងខ្មោចឆៅកាច់ឆ្អឹង</p></div>
-          <button class="sfx-trigger-btn" onclick="playBoneCracking()">▶ ចាក់</button>
-        </div>
-        <div class="sfx-btn-card">
-          <div><strong>👻 Eerie Ghost Drone</strong><p style="font-size:12px; color:var(--text-muted)">សំឡេងព្រឺព្រួចក្នុងទីងងឹត</p></div>
-          <button class="sfx-trigger-btn" onclick="playGhostDrone()">▶ ចាក់</button>
+          <button class="sfx-trigger-btn btn-play-sfx" data-sound="bone">▶ ចាក់</button>
         </div>
       </div>
     </div>
 
-    <!-- VIEW 3: TELEPROMPTER VIEW -->
+    <!-- VIEW 3: TELEPROMPTER -->
     <div id="view-teleprompter" class="view-panel">
       <div class="teleprompter-box">
         <div class="tele-bar">
-          <button id="tele-play-btn" class="sfx-trigger-btn" onclick="toggleTeleprompter()">▶ ចាប់ផ្ដើមរំកិលអក្សរ</button>
-          <button class="sfx-trigger-btn" onclick="resetTeleprompter()">🔄 ពីដើម</button>
+          <button id="btn-toggle-scroll" class="sfx-trigger-btn">▶ ចាប់ផ្ដើមរំកិលអក្សរ</button>
+          <button id="btn-reset-scroll" class="sfx-trigger-btn">🔄 ពីដើម</button>
         </div>
         <div id="tele-content" class="tele-scroll-content">
           [ពាក្យបើកឆាក]: ជំរាបសួរប្រិយមិត្តទាំងអស់គ្នា! សូមស្វាគមន៍មកកាន់ការសម្រាយរឿង Train to Busan!<br><br>
@@ -516,63 +428,167 @@
       </div>
     </div>
 
-    <!-- VIEW 4: APP INFO -->
+    <!-- VIEW 4: APP -->
     <div id="view-app" class="view-panel">
       <div class="movie-banner">
-        <h2 style="color:var(--primary); margin-bottom:10px;">RecapCraft Studio Mobile</h2>
+        <h2 style="color:var(--primary); margin-bottom:10px;">RecapCraft Studio Pro</h2>
         <p style="font-size:13px; color:var(--text-muted); line-height:1.7;">
-          កំណែទម្រង់ទូរស័ព្ទពេញលេញ (Native Hybrid App) បំពាក់ដោយម៉ាស៊ីនសំឡេង Web Audio API អត្ថបទសម្រាយ Beat-by-Beat និងផ្ទាំងអាន Teleprompter ដោយមិនចាំបាច់ប្រើអ៊ីនធឺណិត។
+          កម្មវិធីសម្រាយរឿងបែបស្វ័យប្រវត្តិកម្រិតខ្ពស់ ដំណើរការដោយ Web Audio Engine មិនចាំបាច់មានការភ្ជាប់អ៊ីនធឺណិតនោះឡើយ។
         </p>
       </div>
     </div>
 
   </div>
 
-  <!-- Audio Synthesis & Script Logic -->
+  <!-- Native Event Handlers & Web Audio API -->
   <script>
-    function switchView(viewId, btn) {
-      document.querySelectorAll('.view-panel').forEach(v => v.classList.remove('active'));
-      document.querySelectorAll('.top-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('view-' + viewId).classList.add('active');
-      if (btn) btn.classList.add('active');
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Navigation Switching
+      const topBtns = document.querySelectorAll('.top-btn');
+      const panels = document.querySelectorAll('.view-panel');
 
-    let audioCtx = null;
-    function getCtx() {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      return audioCtx;
-    }
+      function navigateTo(viewName) {
+        panels.forEach(p => p.classList.remove('active'));
+        topBtns.forEach(b => b.classList.remove('active'));
 
-    function playSubBoom() {
-      const c = getCtx();
-      const osc = c.createOscillator(), g = c.createGain();
-      osc.frequency.setValueAtTime(130, c.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(25, c.currentTime + 1.2);
-      g.gain.setValueAtTime(1, c.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 1.3);
-      osc.connect(g); g.connect(c.destination);
-      osc.start(); osc.stop(c.currentTime + 1.4);
-    }
+        const targetPanel = document.getElementById('view-' + viewName);
+        if (targetPanel) targetPanel.classList.add('active');
 
-    function playHeartbeat() {
-      const c = getCtx();
-      const t = c.currentTime;
-      [0, 0.22].forEach(delay => {
-        const osc = c.createOscillator(), g = c.createGain();
-        osc.frequency.setValueAtTime(80, t + delay);
-        osc.frequency.exponentialRampToValueAtTime(30, t + delay + 0.18);
-        g.gain.setValueAtTime(0.8, t + delay);
-        g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.18);
-        osc.connect(g); g.connect(c.destination);
-        osc.start(t + delay); osc.stop(t + delay + 0.2);
+        const activeBtn = document.querySelector(`.top-btn[data-view="${viewName}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+      }
+
+      topBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const view = btn.getAttribute('data-view');
+          navigateTo(view);
+        });
       });
-    }
 
-    function playTensionRiser() {
-      const c = getCtx();
-      const osc = c.createOscillator(), g = c.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(90, c.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(600, c.currentTime + 2.0);
-      g.gain.setValueAtTime(0.05, c.cur
+      const openTeleBtn = document.getElementById('btn-open-tele');
+      if (openTeleBtn) {
+        openTeleBtn.addEventListener('click', () => navigateTo('teleprompter'));
+      }
+
+      // 2. Audio Engine Setup
+      let audioCtx = null;
+      function initAudio() {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContextClass();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        return audioCtx;
+      }
+
+      function playSubBoom() {
+        const c = initAudio();
+        const osc = c.createOscillator(), g = c.createGain();
+        osc.frequency.setValueAtTime(120, c.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(25, c.currentTime + 1.2);
+        g.gain.setValueAtTime(1, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 1.3);
+        osc.connect(g); g.connect(c.destination);
+        osc.start(); osc.stop(c.currentTime + 1.4);
+      }
+
+      function playHeartbeat() {
+        const c = initAudio();
+        const t = c.currentTime;
+        [0, 0.22].forEach(delay => {
+          const osc = c.createOscillator(), g = c.createGain();
+          osc.frequency.setValueAtTime(80, t + delay);
+          osc.frequency.exponentialRampToValueAtTime(30, t + delay + 0.18);
+          g.gain.setValueAtTime(0.8, t + delay);
+          g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.18);
+          osc.connect(g); g.connect(c.destination);
+          osc.start(t + delay); osc.stop(t + delay + 0.2);
+        });
+      }
+
+      function playTensionRiser() {
+        const c = initAudio();
+        const osc = c.createOscillator(), g = c.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(90, c.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, c.currentTime + 2.0);
+        g.gain.setValueAtTime(0.05, c.currentTime);
+        g.gain.linearRampToValueAtTime(0.4, c.currentTime + 1.8);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 2.1);
+        osc.connect(g); g.connect(c.destination);
+        osc.start(); osc.stop(c.currentTime + 2.1);
+      }
+
+      function playJumpScare() {
+        const c = initAudio();
+        const osc = c.createOscillator(), g = c.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(900, c.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(110, c.currentTime + 0.6);
+        g.gain.setValueAtTime(1, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.65);
+        osc.connect(g); g.connect(c.destination);
+        osc.start(); osc.stop(c.currentTime + 0.7);
+      }
+
+      function playBoneCracking() {
+        const c = initAudio();
+        for (let i = 0; i < 4; i++) {
+          const osc = c.createOscillator(), g = c.createGain();
+          osc.type = 'square';
+          const delay = i * 0.08;
+          osc.frequency.setValueAtTime(450 + Math.random() * 500, c.currentTime + delay);
+          osc.frequency.exponentialRampToValueAtTime(80, c.currentTime + delay + 0.05);
+          g.gain.setValueAtTime(0.4, c.currentTime + delay);
+          g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + 0.05);
+          osc.connect(g); g.connect(c.destination);
+          osc.start(c.currentTime + delay);
+          osc.stop(c.currentTime + delay + 0.06);
+        }
+      }
+
+      // Handle Sound Click Events
+      document.querySelectorAll('.btn-play-sfx').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const snd = btn.getAttribute('data-sound');
+          if (snd === 'subboom') playSubBoom();
+          else if (snd === 'heartbeat') playHeartbeat();
+          else if (snd === 'riser') playTensionRiser();
+          else if (snd === 'jumpscare') playJumpScare();
+          else if (snd === 'bone') playBoneCracking();
+        });
+      });
+
+      // 3. Teleprompter Controls
+      let scrollTimer = null;
+      const toggleScrollBtn = document.getElementById('btn-toggle-scroll');
+      const resetScrollBtn = document.getElementById('btn-reset-scroll');
+      const scrollBox = document.getElementById('tele-content');
+
+      if (toggleScrollBtn && scrollBox) {
+        toggleScrollBtn.addEventListener('click', () => {
+          if (scrollTimer) {
+            clearInterval(scrollTimer);
+            scrollTimer = null;
+            toggleScrollBtn.innerText = '▶ ចាប់ផ្ដើមរំកិលអក្សរ';
+          } else {
+            toggleScrollBtn.innerText = '⏸ ផ្អាក';
+            scrollTimer = setInterval(() => {
+              scrollBox.scrollTop += 1;
+            }, 35);
+          }
+        });
+      }
+
+      if (resetScrollBtn && scrollBox) {
+        resetScrollBtn.addEventListener('click', () => {
+          scrollBox.scrollTop = 0;
+        });
+      }
+    });
+  </script>
+</body>
+</html>
