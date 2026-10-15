@@ -39,15 +39,27 @@ jobs:
       - name: Install Dependencies & Build Web App
         working-directory: ${{ steps.prepare.outputs.project_dir }}
         run: |
-          echo "Installing Dependencies with force..."
+          echo "Installing dependencies..."
           npm install --force
           npm install @capacitor/core @capacitor/cli @capacitor/android --force
           npm run build
 
-      - name: Initialize & Sync Capacitor
+      - name: Initialize & Sync Capacitor (JSON Config)
         working-directory: ${{ steps.prepare.outputs.project_dir }}
         run: |
-          npx cap init "RecapCraft Studio" "com.recapcraft.studio" --web-dir "dist" || true
+          # លុបឯកសារ ts config ចាស់ចោលប្រសិនបើមាន ដើម្បីកុំឱ្យជួប CommonJS Error
+          rm -f capacitor.config.ts capacitor.config.js
+
+          # បង្កើតឯកសារ capacitor.config.json សុទ្ធ
+          cat << 'EOF' > capacitor.config.json
+          {
+            "appId": "com.recapcraft.studio",
+            "appName": "RecapCraft Studio",
+            "webDir": "dist"
+          }
+          EOF
+
+          echo "Adding Android platform..."
           npx cap add android || true
           npx cap sync android
 
