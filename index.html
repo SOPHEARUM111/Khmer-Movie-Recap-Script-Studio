@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RecapCraft Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0B0F17;
+      --card: #131B2A;
+      --border: #22324D;
+      --primary: #F59E0B;
+      --danger: #EF4444;
+      --text: #F3F4F6;
+      --muted: #9CA3AF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kantumruy Pro', sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    header { position: sticky; top: 0; background: rgba(11, 15, 23, 0.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; z-index: 50; }
+    .nav { display: flex; gap: 8px; padding: 10px 16px; background: var(--bg); }
+    .nav-btn { flex: 1; padding: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; }
+    .nav-btn.active { background: var(--primary); color: #000; border-color: var(--primary); }
+    .tab { display: none; padding: 16px; flex: 1; }
+    .tab.active { display: block; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+    .sfx-item { display: flex; justify-content: space-between; align-items: center; }
+    .play-btn { background: rgba(245, 158, 11, 0.15); border: 1px solid var(--primary); color: var(--primary); padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .tele-area { height: 65vh; overflow-y: scroll; font-size: 20px; line-height: 2; padding: 16px; background: #070A0F; border-radius: 12px; scroll-behavior: smooth; border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h3 style="color:#FFF; font-size:16px;">🎬 RecapCraft Studio</h3>
+      <span style="color:var(--primary); font-size:11px;">Khmer Movie Recap AI</span>
+    </div>
+  </header>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="showTab('sfx', this)">🎵 SFX សំឡេង</button>
+    <button class="nav-btn" onclick="showTab('script', this)">📝 ស្គ្រីបកាត់ត</button>
+    <button class="nav-btn" onclick="showTab('tele', this)">📺 ផ្ទាំងអាន</button>
+  </div>
+
+  <!-- SFX -->
+  <div id="sfx" class="tab active">
+    <div class="card sfx-item">
+      <div><h4>សំឡេងបាសបន្លឺធ្ងន់</h4><p style="font-size:12px; color:var(--muted);">Cinematic Sub Boom</p></div>
+      <button class="play-btn" onclick="playSubBoom()">▶ ចាក់</button>
+    </div>
+    <div class="card sfx-item">
+      <div><h4>សំឡេងបេះដូងលោត</h4><p style="font-size:12px; color:var(--muted);">Heartbeat Thump</p></div>
+      <button class="play-btn" onclick="playHeartbeat()">▶ ចាក់</button>
+    </div>
+    <div class="card sfx-item">
+      <div><h4>សំឡេងតានតឹងឡើងខ្ពស់</h4><p style="font-size:12px; color:var(--muted);">Tension Riser</p></div>
+      <button class="play-btn" onclick="playTensionRiser()">▶ ចាក់</button>
+    </div>
+    <div class="card sfx-item">
+      <div><h4>សំឡេងកន្ត្រាក់អារម្មណ៍</h4><p style="font-size:12px; color:var(--muted);">Jump Scare Stinger</p></div>
+      <button class="play-btn" onclick="playJumpScare()">▶ ចាក់</button>
+    </div>
+  </div>
+
+  <!-- SCRIPT -->
+  <div id="script" class="tab">
+    <div class="card">
+      <h3 style="color:var(--primary); margin-bottom:8px;">Train to Busan - រឿងពេញ Master Edition</h3>
+      <p style="font-size:13px; color:var(--muted); line-height:1.6;">ស្គ្រីបសម្រាយរឿងបែប Beat-by-Beat ជាមួយការណែនាំសាច់រឿង និងការបញ្ចេញសំឡេង SFX។</p>
+    </div>
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="font-size:12px; color:#3B82F6; font-weight:600;">Beat #1 • 00:00 - 02:30</span>
+        <button class="play-btn" style="padding:2px 8px; font-size:11px;" onclick="playSubBoom()">⚡ SFX</button>
+      </div>
+      <p style="font-size:14px; line-height:1.7;">[Hook Opening]: សូមស្វាគមន៍មកកាន់ការសម្រាយរឿង! នៅកណ្ដាលផ្លូវដែលស្ងាត់ជ្រងំ ឡានដឹកទំនិញមួយបានបើកកាត់ប៉ុស្តិ៍ត្រួតពិនិត្យ។ មហន្តរាយដ៏រន្ធត់កំពុងរង់ចាំពួកគេនៅខាងមុខ...</p>
+    </div>
+  </div>
+
+  <!-- TELEPROMPTER -->
+  <div id="tele" class="tab">
+    <div style="margin-bottom:10px; display:flex; justify-content:space-between;">
+      <button id="tele-btn" class="play-btn" onclick="toggleTele()">▶ ចាប់ផ្ដើមរំកិល</button>
+    </div>
+    <div id="tele-box" class="tele-area">
+      សូមស្វាគមន៍មកកាន់ការសម្រាយរឿង Train to Busan!<br><br>
+      នៅពេលរថភ្លើងចាប់ផ្ដើមចាកចេញពីស្ថានីយសេអ៊ូល គ្មាននរណាម្នាក់ដឹងទេថា នោះគឺជាដំណើរដែលគ្មានផ្លូវត្រឡប់ក្រោយ...<br><br>
+      ការឆ្លងរាលដាលបានកើតឡើងយ៉ាងឆាប់រហ័ស មនុស្សម្នាក់ទៅម្នាក់ទៀតបានប្រែជាកាចសាហាវ!<br><br>
+      តើពួកគេអាចរស់រានមានជីវិតដល់គោលដៅដែរឬទេ?
+    </div>
+  </div>
+
+  <script>
+    function showTab(id, btn) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    let ctx = null;
+    function getCtx() {
+      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    }
+
+    function playSubBoom() {
+      const c = getCtx();
+      const osc = c.createOscillator(), g = c.createGain();
+      osc.frequency.setValueAtTime(120, c.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(30, c.currentTime + 1.2);
+      g.gain.setValueAtTime(1, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 1.2);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(); osc.stop(c.currentTime + 1.3);
+    }
+
+    function playHeartbeat() {
+      const c = getCtx();
+      const t = c.currentTime;
+      [0, 0.22].forEach(delay => {
+        const osc = c.createOscillator(), g = c.createGain();
+        osc.frequency.setValueAtTime(75, t + delay);
+        osc.frequency.exponentialRampToValueAtTime(35, t + delay + 0.18);
+        g.gain.setValueAtTime(0.8, t + delay);
+        g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.18);
+        osc.connect(g); g.connect(c.destination);
+        osc.start(t + delay); osc.stop(t + delay + 0.2);
+      });
+    }
+
+    function playTensionRiser() {
+      const c = getCtx();
+      const osc = c.createOscillator(), g = c.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(90, c.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(550, c.currentTime + 2.0);
+      g.gain.setValueAtTime(0.05, c.currentTime);
+      g.gain.linearRampToValueAtTime(0.35, c.currentTime + 1.8);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 2.1);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(); osc.stop(c.currentTime + 2.1);
+    }
+
+    function playJumpScare() {
+      const c = getCtx();
+      const osc = c.createOscillator(), g = c.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(800, c.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(120, c.currentTime + 0.6);
+      g.gain.setValueAtTime(0.9, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.65);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(); osc.stop(c.currentTime + 0.7);
+    }
+
+    let timer = null;
+    function toggleTele() {
+      const b = document.getElementById('tele-btn');
+      const box = document.getElementById('tele-box');
+      if (timer) {
+        clearInterval(timer); timer = null;
+        b.innerText = '▶ ចាប់ផ្ដើមរំកិល';
+      } else {
+        b.innerText = '⏸ ផ្អាក';
+        timer = setInterval(() => { box.scrollTop += 1; }, 35);
+      }
+    }
+  </script>
+</body>
+</html>
+
